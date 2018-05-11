@@ -99,7 +99,7 @@ function shlezDataGen(varargin)
     if isequal(p.Results.Autosave,'on')
         shlezMatFile = fullfile(p.Results.Directory, ...
                                 [p.Results.FileName '.mat']);
-        if cautionSave(shlezMatFile,'dataX','dataS','trainX','trainS')
+        if cautionSave(shlezMatFile,dataX,dataS,trainX,trainS)
             return;
         end
     elseif isequal(p.Results.Autosave,'off')
@@ -110,7 +110,7 @@ function shlezDataGen(varargin)
             return;
         end
         
-        if cautionSave(shlezMatFile,'dataX','dataS','trainX','trainS')
+        if cautionSave(shlezMatFile,dataX,dataS,trainX,trainS)
             return;
         end
     end
@@ -128,11 +128,11 @@ function canceled = cautionSave(fileDir,dataX,dataS,trainX,trainS)
                           'Replace','Cancel','Replace');
         switch answer
             case 'Replace'
-                save(fileDir,dataX,dataS,trainX,trainS);
+                save(fileDir,'dataX','dataS','trainX','trainS');
             case 'Cancel'
                 canceled = true;
         end
     else
-        save(fileDir,dataX,dataS,trainX,trainS);
+        save(fileDir,'dataX','dataS','trainX','trainS');
     end
 end

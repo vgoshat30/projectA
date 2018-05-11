@@ -116,7 +116,7 @@ def train(epoch):
         (8) to match target batch_size (640)." (which is expected because the
         shape of target before the reshape was: ([8, 80]))
         '''
-        loss = criterion(output, target.view(-1))
+        loss = criterion(output, target)
         loss.backward()
         optimizer.step()
         if batch_idx % 10 == 0:
