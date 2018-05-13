@@ -21,8 +21,11 @@ from torch.utils.data import Dataset, DataLoader
 from torch.autograd import Variable
 import time
 import scipy.io as sio
-import matlab.engine
+#  import matlab.engine
 
+
+BATCH_SIZE = 8
+EPOCHS = 2
 
 class ShlezDatasetTrain(Dataset):
     # Data class fo the training data set (X and S pairs)
@@ -84,7 +87,7 @@ class SignQuantizerNet(nn.Module):
         self.l2 = nn.Linear(520, 320)
         self.l3 = nn.Linear(320, 240)
         self.l4 = nn.Linear(240, 120)
-        self.l5 = nn.Linear(120, 10)
+        self.l5 = nn.Linear(120, 80)
 
     def forward(self, x):
         x = self.l1(x)
@@ -101,26 +104,15 @@ def train(epoch):
         data, target = Variable(data.float()), Variable(target.float())
         optimizer.zero_grad()
         output = model(data)
-        print("DEBUGGING 6:", target)
-        print("DEBUGGING 7:", target.view(-1))
-        print("DEBUGGING 8:", target.shape)
-        '''
-        There is a bug here. If the code is like it's now, an error of
-        "Expected object of type torch.LongTensor but found type
-        torch.FloatTensor for argument #2 'target'" is thrown. To fix this
-        problem, tried to add .long() type cast to 'target' tensor bu got error
-        of: "multi-target not supported" [target is not one dimentional tensor
-        (vector) but a two dimentional one (matrix)]. Tried running both
-        target.view(-1) and target.long().view(-1) to get one dimentional
-        tensor but in both cases got the same error: "Expected input batch_size
-        (8) to match target batch_size (640)." (which is expected because the
-        shape of target before the reshape was: ([8, 80])).
-        '''
+        # print("DEBUGGING 6:", target)
+        # print("DEBUGGING 7:", target.view(-1))
+        # print("DEBUGGING 8:", target.shape)
+
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
         if batch_idx % 10 == 0:
-            print('DEBUGGING 4: Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.data[0]))
 
@@ -128,14 +120,14 @@ def train(epoch):
 def test():
     model.eval()
     test_loss = 0
-    for data, target in test_loader:
-        data, target = Variable(data, volatile=True), Variable(target)
+    for batch_idx, (data, target) in enumerate(test_loader):
+        data, target = Variable(data.float()), Variable(target.float())
         output = model(data)
         # sum up batch loss
-        test_loss += criterion(output, target).data[0]
+        test_loss += criterion(output, target)
 
     test_loss /= len(test_loader.dataset)
-    print('\nDEBUGGING 5: Test set: Average loss: {:.4f}\n'.format(test_loss))
+    print('\nTest set: Average loss: {:.4f}\n'.format(test_loss))
 
 
 # # Run matlab .m script to generate .mat file with test and training data
@@ -145,11 +137,11 @@ def test():
 
 datasetTrainLoader = ShlezDatasetTrain()
 
-train_loader = DataLoader(dataset=datasetTrainLoader, batch_size=8, shuffle=True)
+train_loader = DataLoader(dataset=datasetTrainLoader, batch_size=BATCH_SIZE, shuffle=True)
 
 datasetTestLoader = ShlezDatasetTest()
 
-test_loader = DataLoader(dataset=datasetTestLoader, batch_size=8, shuffle=True)
+test_loader = DataLoader(dataset=datasetTestLoader, batch_size=BATCH_SIZE, shuffle=True)
 
 
 for epoch in range(2):
@@ -166,9 +158,10 @@ print("DEBUGGING 3:", epoch, i)
 
 model = SignQuantizerNet()
 
-criterion = nn.CrossEntropyLoss()
+criterion = nn.MSELoss()
 optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.5)
 
-for epoch in range(1, 10):
+
+for epoch in range(1, EPOCHS):
     train(epoch)
 test()
