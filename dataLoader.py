@@ -114,7 +114,7 @@ def train(epoch):
         target.view(-1) and target.long().view(-1) to get one dimentional
         tensor but in both cases got the same error: "Expected input batch_size
         (8) to match target batch_size (640)." (which is expected because the
-        shape of target before the reshape was: ([8, 80]))
+        shape of target before the reshape was: ([8, 80])).
         '''
         loss = criterion(output, target)
         loss.backward()
