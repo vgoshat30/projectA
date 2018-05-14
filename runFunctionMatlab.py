@@ -1,4 +1,5 @@
 import matlab.engine
+
+# Run matlab .m script to generate .mat file with test and training data
 eng = matlab.engine.start_matlab()
-eng.shlezDataGen('autosave', 'off', 'Directory', '~/Desktop',
-                 'filename', 'aleks', nargout=0)
+eng.shlezDataGen(nargout=0)
