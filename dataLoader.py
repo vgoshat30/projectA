@@ -105,6 +105,7 @@ def train(epoch):
         data, target = Variable(data.float()), Variable(target.float())
         optimizer.zero_grad()
         output = model(data)
+        #  loss = critertion(output.view(-1,1), target.view(-1,1))
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
