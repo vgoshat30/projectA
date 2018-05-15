@@ -1,6 +1,6 @@
 ''' Simple Network, Using data generated from matlab file
 
-Created: 13 May 2018
+Created: 16 May 2018
 
 Creators:   Gosha Tsintsadze
             Matan Shohat
@@ -97,31 +97,80 @@ class SignQuantizerNet(nn.Module):
         return self.l5(x)
 
 
+#  We propose an alternative model using RNN
+
+class SignQuantizerNetRNN(nn.Module):
+
+    def __init__(self):
+        super(SignQuantizerNetRNN, self).__init__()
+
+        # One cell RNN input_dim (240) -> output_dim (80).sequance: 1
+        self.rnn = nn.RNN(input_size=240, hidden_size=80)
+
+        # hidden : (num_layers * num_directions, batch, hidden_size) whether batch_first=True or False
+        self.hidden = Variable(torch.randn(1, BATCH_SIZE, 80))
+        self.l1 = nn.Linear(80, 240)
+        self.l2 = nn.Linear(240, 320)
+        self.l3 = nn.Linear(320, 240)
+        self.l4 = nn.Linear(240, 120)
+        self.l5 = nn.Linear(120, 80)
+
+    def forward(self, x):   # x rank (seq_len = 1, batch = BATCH_SIZE, input_size = 240)
+        x, self.hidden = self.rnn(x, self.hidden)
+        x = self.l1(x)
+        x = self.l2(x)
+        x = torch.sign(x)
+        x = self.l3(x)
+        x = self.l4(x)
+        return self.l5(x)
+
+
+
 def train(epoch):
     model.train()
+    RNN_model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = Variable(data.float()), Variable(target.float())
+
         optimizer.zero_grad()
         output = model(data)
         loss = criterion(output.view(-1, 1), target.view(-1, 1))
         loss.backward()
         optimizer.step()
+
+        optimizer.zero_grad()
+        data_RNN_model = data.view(1, BATCH_SIZE, 240)
+        output_RNN_model = RNN_model(data_RNN_model)
+        loss_RNN_model = criterion(output_RNN_model.view(-1,1), target.view(-1,1))
+        loss_RNN_model.backward()
+        optimizer.step()
+
         if batch_idx % 10 == 0:
-            print('Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+            print('Epoch: {} [{}/{} ({:.0f}%)]\tLinear Loss: {:.6f}\tRNN Loss: {:.6f}'.format(
                 epoch+1, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss))
+                100. * batch_idx / len(train_loader), loss, loss_RNN_model))
 
 
 def test():
     model.eval()
-    test_loss = 0
+    RNN_model.eval()
+    test_loss = test_RNN_loss = 0
+
     for batch_idx, (data, target) in enumerate(test_loader):
         data, target = Variable(data.float()), Variable(target.float())
         output = model(data)
         # sum up batch loss
         test_loss += criterion(output.view(-1, 1), target.view(-1, 1))
+
+        data_RNN_model = data.view(1, BATCH_SIZE, 240)
+        output_RNN_model = RNN_model(data_RNN_model)
+        # sum up batch RNN loss
+        test_RNN_loss += criterion(output_RNN_model.view(-1, 1), target.view(-1, 1))
+
     test_loss /= (len(test_loader.dataset)/BATCH_SIZE)
-    print('\nTest set: Average loss: {:.4f}\n'.format(test_loss))
+    test_RNN_loss /= (len(test_loader.dataset)/BATCH_SIZE)
+
+    print('\nTest set: Average loss: {:.4f}\tTest set: Average RNN loss: {:.4f}\n'.format(test_loss,test_RNN_loss))
 
 
 # # Run matlab .m script to generate .mat file with test and training data
@@ -136,6 +185,7 @@ test_loader = DataLoader(dataset=datasetTestLoader, batch_size=BATCH_SIZE, shuff
 
 
 model = SignQuantizerNet()
+RNN_model = SignQuantizerNetRNN()
 
 criterion = nn.MSELoss()
 optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.5)
