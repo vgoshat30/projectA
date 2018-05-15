@@ -83,8 +83,8 @@ class SignQuantizerNet(nn.Module):
     def __init__(self):
         super(SignQuantizerNet, self).__init__()
         self.l1 = nn.Linear(240, 520)
-        self.l2 = nn.Linear(520, 320)
-        self.l3 = nn.Linear(320, 240)
+        self.l2 = nn.Linear(520, 80)    # See Hardware-Limited Task-Based Quantization Proposion 3. for the choice of output features
+        self.l3 = nn.Linear(80, 240)
         self.l4 = nn.Linear(240, 120)
         self.l5 = nn.Linear(120, 80)
 
@@ -110,8 +110,8 @@ class SignQuantizerNetRNN(nn.Module):
         # hidden : (num_layers * num_directions, batch, hidden_size) whether batch_first=True or False
         self.hidden = Variable(torch.randn(1, BATCH_SIZE, 80))
         self.l1 = nn.Linear(80, 240)
-        self.l2 = nn.Linear(240, 320)
-        self.l3 = nn.Linear(320, 240)
+        self.l2 = nn.Linear(240, 80)    # See Hardware-Limited Task-Based Quantization Proposion 3. for the choice of output features
+        self.l3 = nn.Linear(80, 240)
         self.l4 = nn.Linear(240, 120)
         self.l5 = nn.Linear(120, 80)
 
