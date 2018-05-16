@@ -1,3 +1,8 @@
+"""Main file of projectA
+
+    Trains and tests 1 bit quantization network and a RNN.
+"""
+
 import torch
 import torch.nn as nn
 import torch.optim as optim

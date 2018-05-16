@@ -1,3 +1,13 @@
+"""Creating Simple NN Class
+
+    Creating a class for the NN
+
+    Returns
+    -------
+    SignQuantizerNet
+        A class containing the feed forward function: forward(self, x)
+"""
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -27,38 +37,3 @@ class SignQuantizerNet(nn.Module):
         x = self.l3(x)
         x = self.l4(x)
         return self.l5(x)
-
-
-'''
-def train(epoch):
-    model.train()
-    for batch_idx, (data, target) in enumerate(train_loader):
-        data, target = Variable(data.float()), Variable(target.float())
-
-        optimizer.zero_grad()
-        output = model(data)
-        loss = criterion(output.view(-1, 1), target.view(-1, 1))
-        loss.backward()
-        optimizer.step()
-
-        if batch_idx % 10 == 0:
-            print('Epoch: {} [{}/{} ({:.0f}%)]\tLinear Loss: {:.6f}'.format(
-                epoch+1, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader)), loss)
-
-
-def test():
-    model.eval()
-    test_loss = 0
-
-    for batch_idx, (data, target) in enumerate(test_loader):
-        data, target = Variable(data.float()), Variable(target.float())
-        output = model(data)
-        # sum up batch loss
-        test_loss += criterion(output.view(-1, 1), target.view(-1, 1))
-
-    test_loss /= (len(test_loader.dataset)/BATCH_SIZE)
-
-    print('\nTest set: Average loss: {:.4f}\n'.format(
-        test_loss))
-'''
