@@ -60,13 +60,13 @@ optimizer_RNN = optim.SGD(RNN_model.parameters(), lr=0.01, momentum=0.5)
 
 print('\n\nTRAINING...')
 for epoch in range(0, EPOCHS):
-    print('Training Linear Model:')
+    print('Training Linear model:')
     train(epoch, model, optimizer)
     print('Training RNN model:')
     train(epoch, RNN_model, optimizer_RNN)
 
 print('\n\nTESTING...')
-print('Testing Linear Model:')
+print('Testing Linear model:')
 test(model)
-print('Testing RNN Model:')
+print('Testing RNN model:')
 test(RNN_model)

@@ -30,6 +30,7 @@ class SignQuantizerNetRNN(nn.Module):
     def forward(self, x):   # x rank (seq_len = 1, batch = BATCH_SIZE, input_size = 240)
         x = x.view(1, BATCH_SIZE, 240)
         x, self.hidden = self.rnn(x, self.hidden)
+        x = x.view(BATCH_SIZE, 80)
         x = self.l1(x)
         x = self.l2(x)
         x = torch.sign(x)
