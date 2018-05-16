@@ -31,10 +31,15 @@ class ShlezDatasetTrain(Dataset):
         # Getting train data variables from the .mat file:
         Xdata = shlezMat['trainX']
         Sdata = shlezMat['trainS']
-
+        # Expected value estimation
+        Xdata_mean = np.mean(Xdata)
+        # Variance estimation
+        Xdata_variance =  np.mean((Xdata - Xdata_mean) * (Xdata - Xdata_mean))
         # Converting numpy arrays to pytorch tensors:
         self.X_data = torch.from_numpy(Xdata)
         self.S_data = torch.from_numpy(Sdata)
+        self.X_data_mean = torch.from_numpy(Xdata_mean)
+        self.X_data_variance = torch.from_numpy(Xdata_variance)
 
         # Number of X, S couples:
         self.len = Sdata.shape[0]

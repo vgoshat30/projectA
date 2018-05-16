@@ -15,7 +15,7 @@ from dataLoader import *
 import linearModel1
 import RNNmodel1
 from projectConstants import *
-
+from UniformQuantizer import generate_codebook
 
 def train(epoch, model, optimizer):
     model.train()
@@ -54,6 +54,7 @@ datasetTrainLoader = ShlezDatasetTrain()
 train_loader = DataLoader(dataset=datasetTrainLoader, batch_size=BATCH_SIZE, shuffle=True)
 datasetTestLoader = ShlezDatasetTest()
 test_loader = DataLoader(dataset=datasetTestLoader, batch_size=BATCH_SIZE, shuffle=True)
+Quantization_codebook = generate_codebook(datasetTrainLoader.X_data_variance, M)
 
 
 model = linearModel1.SignQuantizerNet()
