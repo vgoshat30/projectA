@@ -20,7 +20,7 @@ def train(epoch, model, optimizer):
         optimizer.zero_grad()
         output = model(data)
         loss = criterion(output.view(-1, 1), target.view(-1, 1))
-        loss.backward()
+        loss.backward(retain_graph=True)
         optimizer.step()
 
         if batch_idx % 10 == 0:
@@ -60,8 +60,13 @@ optimizer_RNN = optim.SGD(RNN_model.parameters(), lr=0.01, momentum=0.5)
 
 print('\n\nTRAINING...')
 for epoch in range(0, EPOCHS):
+    print('Training Linear Model:')
     train(epoch, model, optimizer)
+    print('Training RNN model:')
     train(epoch, RNN_model, optimizer_RNN)
 
 print('\n\nTESTING...')
-test()
+print('Testing Linear Model:')
+test(model)
+print('Testing RNN Model:')
+test(RNN_model)
