@@ -24,7 +24,8 @@ class SignQuantizerNet(nn.Module):
     def __init__(self):
         super(SignQuantizerNet, self).__init__()
         self.l1 = nn.Linear(240, 520)
-        # See Hardware-Limited Task-Based Quantization Proposion 3. for the choice of output features
+        # See Hardware-Limited Task-Based Quantization Proposion 3. for the
+        # choice of output features
         self.l2 = nn.Linear(520, 80)
         self.l3 = nn.Linear(80, 240)
         self.l4 = nn.Linear(240, 120)

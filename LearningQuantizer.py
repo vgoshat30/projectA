@@ -5,21 +5,28 @@ from torch.nn.parameter import Parameter
 from .. import functional as F
 from .module import Module
 
+
 class LearningQuantizerLayer(Module):
     """Applies a quantization process to the incoming scalar data
 
-    Args:
-        M: size of codebook
+    Args
+    ----
+        M
+            size of codebook
 
-    Shape:
-        - Input: :math:`(N, *, in\_features)` where :math:`*` means any number of
-          additional dimensions
-        - Output: :math:`(N, *, out\_features)` where all but the last dimension
-          are the same shape as the input.
+    Shape
+    -----
+        Input
+            :math:`(N, *, in\_features)` where :math:`*` means any number of
+            additional dimensions
+        Output
+            :math:`(N, *, out\_features)` where all but the last dimension are
+            the same shape as the input.
 
-    Attributes:
-        codebook: the learnable codebook of the module of shape
-            `(M x 1)`
+    Attributes
+    ----------
+        codebook
+            the learnable codebook of the module of shape `(M x 1)`
 
     """
 
@@ -41,11 +48,13 @@ class LearningQuantizerLayer(Module):
         elif input_value > self.codebook.data[self.M - 1]:
             return self.codebook.data[self.M - 1]
         for ii in range(0, self.M - 1):
-            if(input_value > self.codebook.data[ii] and input_value < self.codebook.data[ii + 1]):
-                ret =  self.codebook.data[ii] if input_value <= ((self.codebook.data[ii + 1] - self.codebook.data[ii])/2) else self.codebook.data[ii + 1]
+            if(input_value > self.codebook.data[ii] and input_value <
+               self.codebook.data[ii + 1]):
+                ret = self.codebook.data[ii] if input_value <= (
+                    (self.codebook.data[ii + 1] - self.codebook.data[ii])/2)
+                    else self.codebook.data[ii + 1]
                 return ret
         return self.codebook.data[0]
-
 
     def extra_repr(self):
         return 'M={}'.format(self.M)

@@ -23,7 +23,11 @@ import numpy as np
 
 
 class ShlezDatasetTrain(Dataset):
-    """ Data class for the training data set (X and S pairs) """
+    """
+        Data class for the training data set (X and S pairs)
+        Creates fields for X data and S data and calculates the mean and
+        and variance of the X data (to be used for creation of a codebook)
+    """
 
     def __init__(self):
         # Loading .mat file
@@ -32,14 +36,12 @@ class ShlezDatasetTrain(Dataset):
         Xdata = shlezMat['trainX']
         Sdata = shlezMat['trainS']
         # Expected value estimation
-        Xdata_mean = np.mean(Xdata)
+        self.X_mean = np.mean(Xdata)
         # Variance estimation
-        Xdata_variance =  np.mean((Xdata - Xdata_mean) * (Xdata - Xdata_mean))
+        self.X_var = np.mean((Xdata - self.X_mean) * (Xdata - self.X_mean))
         # Converting numpy arrays to pytorch tensors:
         self.X_data = torch.from_numpy(Xdata)
         self.S_data = torch.from_numpy(Sdata)
-        self.X_data_mean = torch.from_numpy(Xdata_mean)
-        self.X_data_variance = torch.from_numpy(Xdata_variance)
 
         # Number of X, S couples:
         self.len = Sdata.shape[0]
