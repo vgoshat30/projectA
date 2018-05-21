@@ -52,7 +52,7 @@ class UniformQuantizerNet(nn.Module):
         self.l3 = nn.Linear(80, 240)
         self.l4 = nn.Linear(240, 120)
         self.l5 = nn.Linear(120, 80)
-        self.q1 = QuantizerUniformLayer(codebook)
+        self.q1 = MyQuantizerUniformLayer(codebook)
 
     def forward(self, x):
         x = self.l1(x)
