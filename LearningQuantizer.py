@@ -4,6 +4,7 @@ import torch
 from torch.nn.parameter import Parameter
 from .. import functional as F
 from .module import Module
+from UniformQuantizer import *
 
 
 class LearningQuantizerLayer(Module):
@@ -58,3 +59,20 @@ class LearningQuantizerLayer(Module):
 
     def extra_repr(self):
         return 'M={}'.format(self.M)
+
+
+class QuantizerUniformLayer(Module):
+    def __init__(self, codebook):
+        super(QuantizerUniformLayer, self).__init__()
+        self.codebook = codebook
+
+    def forward(self, input):
+        qunatized_input = torch.zeros(input.size())
+        for ii in range(0, input.size()[0]):
+            for jj in range(0, input.size()[1]):
+                qunatized_input[ii][jj] = get_optimal_word(input(ii,jj), codebook)
+        return qunatized_input
+
+
+    def extra_repr(self):
+        return 'codebook=%s'.format(self.codebook)

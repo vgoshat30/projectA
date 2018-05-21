@@ -15,7 +15,7 @@ from dataLoader import *
 import linearModel1
 import RNNmodel1
 from projectConstants import *
-from UniformQuantizer import codebook_uniform
+from UniformQuantizer import *
 
 
 def train(epoch, model, optimizer):
@@ -64,21 +64,27 @@ Quantization_codebook = codebook_uniform(trainData.X_var, M)
 
 
 model_lin1 = linearModel1.SignQuantizerNet()
+model_lin2 = linearModel1.UniformQuantizerNet(Quantization_codebook)
 model_RNN1 = RNNmodel1.SignQuantizerNetRNN()
 
 criterion = nn.MSELoss()
 optimizer_lin1 = optim.SGD(model_lin1.parameters(), lr=0.01, momentum=0.5)
+optimizer_lin2 = optim.SGD(model_lin2.parameters(), lr=0.01, momentum=0.5)
 optimizer_RNN1 = optim.SGD(model_RNN1.parameters(), lr=0.01, momentum=0.5)
 
 print('\n\nTRAINING...')
 for epoch in range(0, EPOCHS):
     print('Training Linear model:')
     train(epoch, model_lin1, optimizer_lin1)
+    print('Training Linear model:')
+    train(epoch, model_lin2, optimizer_lin2)
     print('Training RNN model:')
     train(epoch, model_RNN1, optimizer_RNN1)
 
 print('\n\nTESTING...')
 print('Testing Linear model:')
 test(model_lin1)
+print('Testing Linear model:')
+test(model_lin2)
 print('Testing RNN model:')
 test(model_RNN1)
