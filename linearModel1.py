@@ -5,7 +5,9 @@
     Returns
     -------
     SignQuantizerNet
-        A class containing the feed forward function: forward(self, x)
+        A class containing the feed forward function: forward(self, x) and sign quantization
+    UniformQuantizerNet
+        A class containing the feed forward function: forward(self, x) and uniform quantization
 """
 
 import torch
@@ -52,12 +54,12 @@ class UniformQuantizerNet(nn.Module):
         self.l3 = nn.Linear(80, 240)
         self.l4 = nn.Linear(240, 120)
         self.l5 = nn.Linear(120, 80)
-        self.q1 = MyQuantizerUniformLayer(codebook)
+        self.q1 = MyQuantizerUniformActivation()
 
-    def forward(self, x):
+    def forward(self, x, codebook):
         x = self.l1(x)
         x = self.l2(x)
-        x = self.q1(x)
+        x = self.q1(x, codebook)
         x = self.l3(x)
         x = self.l4(x)
         return self.l5(x)

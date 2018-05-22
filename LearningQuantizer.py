@@ -79,7 +79,7 @@ class QuantizerUniformLayer(Module):
         return 'codebook=%s'.format(self.codebook)
 
 
-class MyQuantizerUniformLayer(torch.autograd.Function):
+class MyQuantizerUniformActivation(torch.autograd.Function):
     """
     In order to keep propegating through step activations we have to construct
     our own quantization activation function with the apropriate forward and
