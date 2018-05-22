@@ -95,7 +95,7 @@ Quantization_codebook = codebook_uniform(trainData.X_var, M)
 # model_lin1: Basic linear network with sign activation as the quantization
 model_lin1 = linearModel1.SignQuantizerNet()
 # model_lin2: Basic linear network with uniform quantization instead of sign
-model_lin2 = linearModel1.UniformQuantizerNet()
+model_lin2 = linearModel1.UniformQuantizerNet(Quantization_codebook)
 # model_RNN1: Basic linear network with sign activation and pre-quantization RNN layer
 model_RNN1 = RNNmodel1.SignQuantizerNetRNN()
 # model_RNN2: Basic linear network with sign activation and pre-quantization LSTM layer
@@ -113,7 +113,7 @@ for epoch in range(0, EPOCHS):
     print('Training Linear sign quantization model:')
     train(epoch, model_lin1, optimizer_lin1)
     print('Training Linear uniform quantization model:')
-    trainWithQuantizer(epoch, model_lin2, optimizer_lin2, Quantization_codebook)
+    train(epoch, model_lin2, optimizer_lin2)
     print('Training RNN sign quantization model:')
     train(epoch, model_RNN1, optimizer_RNN1)
     print('Training LSTM sign quantization model:')

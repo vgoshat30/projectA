@@ -54,12 +54,12 @@ class UniformQuantizerNet(nn.Module):
         self.l3 = nn.Linear(80, 240)
         self.l4 = nn.Linear(240, 120)
         self.l5 = nn.Linear(120, 80)
-        self.q1 = MyQuantizerUniformActivation()
+        self.q1 = MyQuantizerUniformActivation(codebook)
 
-    def forward(self, x, codebook):
+    def forward(self, x):
         x = self.l1(x)
         x = self.l2(x)
-        x = self.q1(x, codebook)
+        x = self.q1(x)
         x = self.l3(x)
         x = self.l4(x)
         return self.l5(x)
