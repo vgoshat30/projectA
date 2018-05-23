@@ -19,7 +19,7 @@ from dataLoader import *
 import linearModel1
 import RNNmodel1
 from projectConstants import *
-from UniformQuantizer import *
+import UniformQuantizer
 
 
 def train(epoch, model, optimizer):
@@ -29,22 +29,6 @@ def train(epoch, model, optimizer):
 
         optimizer.zero_grad()
         output = model(data)
-        loss = criterion(output.view(-1, 1), target.view(-1, 1))
-        loss.backward(retain_graph=True)
-        optimizer.step()
-
-        if batch_idx % 10 == 0:
-            print('Epoch: {} [{}/{} ({:.0f}%)]\tLinear Loss: {:.6f}'.format(
-                epoch+1, batch_idx * len(data), len(trainLoader.dataset),
-                100. * batch_idx / len(trainLoader), loss))
-
-def trainWithQuantizer(epoch, model, optimizer, codebook):
-    model.train()
-    for batch_idx, (data, target) in enumerate(trainLoader):
-        data, target = Variable(data.float()), Variable(target.float())
-
-        optimizer.zero_grad()
-        output = model(data, codebook)
         loss = criterion(output.view(-1, 1), target.view(-1, 1))
         loss.backward(retain_graph=True)
         optimizer.step()
@@ -68,19 +52,6 @@ def test(model):
     test_loss /= (len(test_loader.dataset)/BATCH_SIZE)
     print('\nTest set: Average loss: {:.4f}\n'.format(test_loss))
 
-def testWithQuantizer(model, codebook):
-    model.eval()
-    test_loss = 0
-
-    for batch_idx, (data, target) in enumerate(testLoader):
-        data, target = Variable(data.float()), Variable(target.float())
-        output = model(data, codebook)
-        # sum up batch loss
-        test_loss += criterion(output.view(-1, 1), target.view(-1, 1))
-
-    test_loss /= (len(test_loader.dataset)/BATCH_SIZE)
-    print('\nTest set: Average loss: {:.4f}\n'.format(test_loss))
-
 # Get the class containing the train data from dataLoader.py
 trainData = ShlezDatasetTrain()
 # define training dataloader
@@ -90,7 +61,7 @@ testData = ShlezDatasetTest()
 testLoader = DataLoader(dataset=testData, batch_size=BATCH_SIZE, shuffle=True)
 
 # Generate uniform code book using the variance of the tain data
-Quantization_codebook = codebook_uniform(trainData.X_var, M)
+Quantization_codebook = UniformQuantizer.codebook_uniform(trainData.X_var, M)
 
 # model_lin1: Basic linear network with sign activation as the quantization
 model_lin1 = linearModel1.SignQuantizerNet()
@@ -119,11 +90,13 @@ for epoch in range(0, EPOCHS):
     print('Training LSTM sign quantization model:')
     train(epoch, model_RNN1, optimizer_RNN1)
 
+
+print('Quantization Rate: {:.3f}'.format(QUANTIZATION_RATE))
 print('\n\nTESTING...')
 print('Testing Linear sign quantization model:')
 test(model_lin1)
 print('Testing Linear uniform quantization model:')
-testWithQuantizer(model_lin2, Quantization_codebook)
+test(model_lin2, Quantization_codebook)
 print('Testing RNN sign quantization model:')
 test(model_RNN1)
 print('Testing LSTM sign quantization model:')
