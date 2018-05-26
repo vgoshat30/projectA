@@ -4,6 +4,8 @@ from torch.nn.parameter import Parameter
 from torch.nn.modules.module import Module
 import UniformQuantizer
 from projectConstants import *
+import numpy as np
+from torch.autograd import Variable
 
 # Inherit from Function
 class signActivation(torch.autograd.Function):
@@ -74,7 +76,7 @@ class QuantizationFunction(torch.autograd.Function):
 
 
 # Inherit from Function
-class LearningQuantizerFunction(torch.autograd.Function):
+class LearningSOMFunction(torch.autograd.Function):
     """Applies a quantization process to the incoming scalar data using SOM
 
 
@@ -109,7 +111,7 @@ class LearningQuantizerFunction(torch.autograd.Function):
         input_data = input.data
         input_numpy = input_data.numpy()
         qunatized_input = torch.zeros(input.size())
-        retcodebook = list(testCodebook)
+        retcodebook = list(testCodebook.data.numpy())
         for ii in range(0, input_data.size(0)):
             for jj in range(0, input_data.size(1)):
                 qunatized_input[ii][jj], __ = UniformQuantizer.get_optimal_word(
@@ -117,9 +119,10 @@ class LearningQuantizerFunction(torch.autograd.Function):
                 itrVal, quantized_idx = UniformQuantizer.get_optimal_word(
                     input_numpy[ii, jj], tuple(retcodebook))
                 # update winner codeword
-                retcodebook[quantized_idx] = retcodebook[quantized_idx] +  CODEBOOK_LR*(input_numpy[ii, jj] - itrVal)
-
-        return qunatized_input, tuple(retcodebook)
+                retcodebook[quantized_idx] = retcodebook[quantized_idx] + CODEBOOK_LR*(input_numpy[ii, jj] - itrVal)
+        retcodebook = torch.from_numpy(np.asarray(retcodebook))
+        retcodebook = Variable(retcodebook.float())
+        return qunatized_input, retcodebook
 
     # This function has only a single output, so it gets only one gradient
     @staticmethod

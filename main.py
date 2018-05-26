@@ -91,7 +91,7 @@ def test(model):
         test_loss += criterion(output.view(-1, 1), target.view(-1, 1))
 
     test_loss /= (len(testLoader.dataset)/BATCH_SIZE)
-    print('\nTest set: Average loss: {:.4f}\n'.format(test_loss))
+    print('\nTest average loss: {:.4f}\n'.format(test_loss))
 
 
 
@@ -149,27 +149,27 @@ optimizer_RNN2 = optim.SGD(model_RNN2.parameters(), lr=0.01, momentum=0.5)
 
 # responsible for the learning rate decay
 lambda_lin2 = lambda epoch: 0.8 ** epoch
-scheduler_lin2 = LambdaLR(optimizer_lin2, lr_lambda=lambda_lin2)
+scheduler_lin2 = optim.lr_scheduler.LambdaLR(optimizer_lin2, lr_lambda=lambda_lin2)
 lambda_lin3 = lambda epoch: 0.1 ** epoch
-scheduler_lin3 = LambdaLR(optimizer_lin3, lr_lambda=lambda_lin3)
+scheduler_lin3 = optim.lr_scheduler.LambdaLR(optimizer_lin3, lr_lambda=lambda_lin3)
 lambda_lin4 = lambda epoch: 0.1 ** epoch
-scheduler_lin4 = LambdaLR(optimizer_lin4, lr_lambda=lambda_lin4)
+scheduler_lin4 = optim.lr_scheduler.LambdaLR(optimizer_lin4, lr_lambda=lambda_lin4)
 
 print('\n\nTRAINING...')
 for epoch in range(0, EPOCHS):
-    print('Training analog - sign quantization- digital model:')
+    print('\nTraining Linear sign quantization model:')
+    train(epoch, model_lin1, optimizer_lin1)
+    print('\nTraining Linear uniform codebook quantization model:')
+    train(epoch, model_lin2, optimizer_lin2)
+    print('\nTraining Linear SOM learning codebook quantization model:')
+    train(epoch, model_lin5, optimizer_lin5)
+    print('\nTraining analog - sign quantization- digital model:')
     trainAnalogDigital(epoch, model_lin3, model_lin4, optimizer_lin3,
                        optimizer_lin4, S_codebook)
-    print('Training Linear sign quantization model:')
-    train(epoch, model_lin1, optimizer_lin1)
-    print('Training Linear uniform quantization model:')
-    train(epoch, model_lin2, optimizer_lin2)
-    print('Training Linear SOM quantization model:')
-    train(epoch, model_lin5, optimizer_lin5)
-    print('Training RNN sign quantization model:')
+    print('\nTraining RNN sign quantization model:')
     train(epoch, model_RNN1, optimizer_RNN1)
-    print('Training LSTM sign quantization model:')
-    train(epoch, model_RNN1, optimizer_RNN1)
+    print('\nTraining LSTM sign quantization model:')
+    train(epoch, model_RNN2, optimizer_RNN2)
     # step the learning rate decay
     scheduler_lin2.step()
     scheduler_lin3.step()
@@ -178,14 +178,19 @@ for epoch in range(0, EPOCHS):
 
 print('Quantization Rate: {:.3f}'.format(QUANTIZATION_RATE))
 print('\n\nTESTING...')
-print('Testing Linear sign quantization model:')
+print('===========================================================================')
+print('\nTesting Linear sign quantization model:')
 test(model_lin1)
-print('Testing Linear uniform quantization model:')
+print('===========================================================================')
+print('\nTesting Linear uniform quantization model:')
 test(model_lin2)
-print('Testing Linear SOM quantization model:')
-model_SOMtest = linearModels.UniformQuantizerNet(model_lin5.testCodebook)
-test(model_SOMtest)
-print('Testing RNN sign quantization model:')
+print('===========================================================================')
+print('\nTesting Linear SOM quantization model:')
+model_SOM = linearModels.UniformQuantizerNet(model_lin5.testCodebook)
+test(model_SOM)
+print('===========================================================================')
+print('\nTesting RNN sign quantization model:')
 test(model_RNN1)
-print('Testing LSTM sign quantization model:')
+print('===========================================================================')
+print('\nTesting LSTM sign quantization model:')
 test(model_RNN2)

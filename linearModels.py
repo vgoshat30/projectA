@@ -27,6 +27,7 @@ from torch.autograd import Variable
 import scipy.io as sio
 import numpy as np
 
+import UniformQuantizer
 import LearningQuantizer
 from projectConstants import *
 
@@ -86,14 +87,27 @@ class SOMQuantizerNet(nn.Module):
         self.l3 = nn.Linear(OUTPUT_DIMENSION, 240)
         self.l4 = nn.Linear(240, 120)
         self.l5 = nn.Linear(120, OUTPUT_DIMENSION)
-        self.q1 = LearningQuantizer.LearningQuantizerFunction.apply
+        self.q1 = LearningQuantizer.QuantizationFunction.apply
         self.codebook = codebook
+        # self.testCodebook = Variable(self.testCodebook.float())
+        # self.testCodebook = torch.from_numpy(np.asarray(codebook))
         self.testCodebook = codebook
 
     def forward(self, x):
+        # update the learning codebook
+        x_numpy = x.data.numpy()
+        newCodebook = list(self.testCodebook)
+        for ii in range(0, x.size(0)):
+            for jj in range(0, x.size(1)):
+                itrVal, quantized_idx = UniformQuantizer.get_optimal_word(
+                    x_numpy[ii, jj], tuple(newCodebook))
+                # update winner codeword
+                newCodebook[quantized_idx] = newCodebook[quantized_idx] + CODEBOOK_LR*(x_numpy[ii, jj] - itrVal)
+        self.testCodebook = tuple(newCodebook)
+
         x = self.l1(x)
         x = self.l2(x)
-        x, self.testCodebook = self.q1(x, self.codebook, self.testCodebook)
+        x = self.q1(x, self.codebook)
         x = self.l3(x)
         x = self.l4(x)
         return self.l5(x)
