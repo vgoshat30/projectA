@@ -19,7 +19,7 @@ from dataLoader import *
 import linearModels
 import RNNmodels
 from projectConstants import *
-from UniformQuantizer import *
+import UniformQuantizer
 
 
 def train(epoch, model, optimizer):
@@ -144,7 +144,7 @@ testData = ShlezDatasetTest()
 testLoader = DataLoader(dataset=testData, batch_size=BATCH_SIZE, shuffle=True)
 
 # Generate uniform code book using the variance of the tain data
-Quantization_codebook = codebook_uniform(trainData.X_var, M)
+Quantization_codebook = UniformQuantizer.codebook_uniform(trainData.X_var, M)
 
 # model_lin1: Basic linear network with sign activation as the quantization
 model_lin1 = linearModels.SignQuantizerNet()
@@ -187,11 +187,13 @@ for epoch in range(0, EPOCHS):
     print('Training LSTM sign quantization model:')
     train(epoch, model_RNN1, optimizer_RNN1)
 
+
+print('Quantization Rate: {:.3f}'.format(QUANTIZATION_RATE))
 print('\n\nTESTING...')
 print('Testing Linear sign quantization model:')
 test(model_lin1)
 print('Testing Linear uniform quantization model:')
-testWithQuantizer(model_lin2, Quantization_codebook)
+test(model_lin2, Quantization_codebook)
 print('Testing RNN sign quantization model:')
 test(model_RNN1)
 print('Testing LSTM sign quantization model:')

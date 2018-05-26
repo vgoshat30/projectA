@@ -18,7 +18,7 @@ from torch.autograd import Variable
 import scipy.io as sio
 import numpy as np
 
-from LearningQuantizer import *
+import LearningQuantizer
 from projectConstants import *
 
 
@@ -54,12 +54,13 @@ class UniformQuantizerNet(nn.Module):
         self.l3 = nn.Linear(80, 240)
         self.l4 = nn.Linear(240, 120)
         self.l5 = nn.Linear(120, 80)
-        self.q1 = MyQuantizerUniformActivation(codebook)
+        self.q1 = LearningQuantizer.QuantizationFunction.apply
+        self.codebook = codebook
 
     def forward(self, x):
         x = self.l1(x)
         x = self.l2(x)
-        x = self.q1(x)
+        x = self.q1(x, self.codebook)
         x = self.l3(x)
         x = self.l4(x)
         return self.l5(x)
