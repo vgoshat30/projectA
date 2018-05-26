@@ -16,8 +16,8 @@ import scipy.io as sio
 import numpy as np
 
 from dataLoader import *
-import linearModel1
-import RNNmodel1
+import linearModels
+import RNNmodels
 from projectConstants import *
 from UniformQuantizer import *
 
@@ -37,6 +37,47 @@ def train(epoch, model, optimizer):
             print('Epoch: {} [{}/{} ({:.0f}%)]\tLinear Loss: {:.6f}'.format(
                 epoch+1, batch_idx * len(data), len(trainLoader.dataset),
                 100. * batch_idx / len(trainLoader), loss))
+
+
+def trainAnalogDigital(epoch, modelAnalog, modelDigital,
+                       optimizerAnalog, optimizerDigital, codebook):
+    modelAnalog.train()
+    modelDigital.train()
+
+    # Train analog NN
+    for batch_idx, (data, target) in enumerate(trainLoader):
+        data, target = Variable(data.float()), Variable(target.float())
+
+        optimizerAnalog.zero_grad()
+        output = modelAnalog(data)
+        lossAnalog = criterion(output.view(-1, 1), target.view(-1, 1))
+        lossAnalog.backward(retain_graph=True)
+        optimizerAnalog.step()
+
+        if batch_idx % 10 == 0:
+            print('Analog: Epoch: {} [{}/{} ({:.0f}%)]\tLinear Loss: {:.6f}'.format(
+                epoch+1, batch_idx * len(data), len(trainLoader.dataset),
+                100. * batch_idx / len(trainLoader), lossAnalog))
+
+    # Train digital NN
+    for batch_idx, (data, target) in enumerate(trainLoader):
+
+        target = Variable(target.float())
+
+        analogProcessData = modelAnalog(data.float())
+        quantizedData = Variable(justQuantize(analogProcessData, codebook))
+
+        optimizerDigital.zero_grad()
+        output = modelDigital(quantizedData)
+        lossDigital = criterion(output.view(-1, 1), target.view(-1, 1))
+        lossDigital.backward(retain_graph=True)
+        optimizerDigital.step()
+
+        if batch_idx % 10 == 0:
+            print('Digital: Epoch: {} [{}/{} ({:.0f}%)]\tLinear Loss: {:.6f}'.format(
+                epoch+1, batch_idx * len(data), len(trainLoader.dataset),
+                100. * batch_idx / len(trainLoader), lossDigital))
+
 
 def trainWithQuantizer(epoch, model, optimizer, codebook):
     model.train()
@@ -68,6 +109,7 @@ def test(model):
     test_loss /= (len(test_loader.dataset)/BATCH_SIZE)
     print('\nTest set: Average loss: {:.4f}\n'.format(test_loss))
 
+
 def testWithQuantizer(model, codebook):
     model.eval()
     test_loss = 0
@@ -81,6 +123,18 @@ def testWithQuantizer(model, codebook):
     test_loss /= (len(test_loader.dataset)/BATCH_SIZE)
     print('\nTest set: Average loss: {:.4f}\n'.format(test_loss))
 
+
+def justQuantize(input, codebook):
+    input_data = input.data
+    input_numpy = input_data.numpy()
+    qunatized_input = torch.zeros(input.size())
+    for ii in range(0, input_data.size(0)):
+        for jj in range(0, input_data.size(1)):
+            qunatized_input[ii][jj] = get_optimal_word(input_numpy[ii, jj],
+                                                       codebook)
+    return qunatized_input
+
+
 # Get the class containing the train data from dataLoader.py
 trainData = ShlezDatasetTrain()
 # define training dataloader
@@ -93,23 +147,37 @@ testLoader = DataLoader(dataset=testData, batch_size=BATCH_SIZE, shuffle=True)
 Quantization_codebook = codebook_uniform(trainData.X_var, M)
 
 # model_lin1: Basic linear network with sign activation as the quantization
-model_lin1 = linearModel1.SignQuantizerNet()
+model_lin1 = linearModels.SignQuantizerNet()
 # model_lin2: Basic linear network with uniform quantization instead of sign
-model_lin2 = linearModel1.UniformQuantizerNet(Quantization_codebook)
-# model_RNN1: Basic linear network with sign activation and pre-quantization RNN layer
-model_RNN1 = RNNmodel1.SignQuantizerNetRNN()
-# model_RNN2: Basic linear network with sign activation and pre-quantization LSTM layer
-model_RNN2 = RNNmodel1.SignQuantizerNetLSTM()
+model_lin2 = linearModels.UniformQuantizerNet(Quantization_codebook)
+# model_lin3: Basic linear network which learns to prepare the analog signal
+# data for quantization
+model_lin3 = linearModels.AnalogProcessNet()
+# model_lin4: Basic linear network which learns to perform the digital
+# processing after the quantization and results the channel coefficients
+model_lin4 = linearModels.DigitalProcessNet()
+# model_RNN1: Basic linear network with sign activation and pre-quantization
+# RNN layer
+model_RNN1 = RNNmodels.SignQuantizerNetRNN()
+# model_RNN2: Basic linear network with sign activation and pre-quantization
+# LSTM layer
+model_RNN2 = RNNmodels.SignQuantizerNetLSTM()
+
 
 criterion = nn.MSELoss()
 optimizer_lin1 = optim.SGD(model_lin1.parameters(), lr=0.01, momentum=0.5)
 optimizer_lin2 = optim.SGD(model_lin2.parameters(), lr=0.01, momentum=0.5)
+optimizer_lin3 = optim.SGD(model_lin3.parameters(), lr=0.01, momentum=0.5)
+optimizer_lin4 = optim.SGD(model_lin4.parameters(), lr=0.01, momentum=0.5)
 optimizer_RNN1 = optim.SGD(model_RNN1.parameters(), lr=0.01, momentum=0.5)
 optimizer_RNN2 = optim.SGD(model_RNN2.parameters(), lr=0.01, momentum=0.5)
 
 
 print('\n\nTRAINING...')
 for epoch in range(0, EPOCHS):
+    print('Training Linear sign quantization model:')
+    trainAnalogDigital(epoch, model_lin3, model_lin4, optimizer_lin3,
+                       optimizer_lin4, Quantization_codebook)
     print('Training Linear sign quantization model:')
     train(epoch, model_lin1, optimizer_lin1)
     print('Training Linear uniform quantization model:')
