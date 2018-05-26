@@ -130,7 +130,7 @@ def justQuantize(input, codebook):
     qunatized_input = torch.zeros(input.size())
     for ii in range(0, input_data.size(0)):
         for jj in range(0, input_data.size(1)):
-            qunatized_input[ii][jj] = UniformQuantizer.get_optimal_word(
+            qunatized_input[ii][jj], __ = UniformQuantizer.get_optimal_word(
                 input_numpy[ii, jj], codebook)
     return qunatized_input
 
@@ -156,6 +156,8 @@ model_lin3 = linearModels.AnalogProcessNet()
 # model_lin4: Basic linear network which learns to perform the digital
 # processing after the quantization and results the channel coefficients
 model_lin4 = linearModels.DigitalProcessNet()
+# model_lin5: Basic linear network with SOM learning quantization instead of sign
+model_lin5 = linearModels.SOMQuantizerNet(Quantization_codebook)
 # model_RNN1: Basic linear network with sign activation and pre-quantization
 # RNN layer
 model_RNN1 = RNNmodels.SignQuantizerNetRNN()
@@ -169,6 +171,7 @@ optimizer_lin1 = optim.SGD(model_lin1.parameters(), lr=0.01, momentum=0.5)
 optimizer_lin2 = optim.SGD(model_lin2.parameters(), lr=0.01, momentum=0.5)
 optimizer_lin3 = optim.SGD(model_lin3.parameters(), lr=0.01, momentum=0.5)
 optimizer_lin4 = optim.SGD(model_lin4.parameters(), lr=0.01, momentum=0.5)
+optimizer_lin5 = optim.SGD(model_lin5.parameters(), lr=0.01, momentum=0.5)
 optimizer_RNN1 = optim.SGD(model_RNN1.parameters(), lr=0.01, momentum=0.5)
 optimizer_RNN2 = optim.SGD(model_RNN2.parameters(), lr=0.01, momentum=0.5)
 
@@ -182,6 +185,8 @@ for epoch in range(0, EPOCHS):
     train(epoch, model_lin1, optimizer_lin1)
     print('Training Linear uniform quantization model:')
     train(epoch, model_lin2, optimizer_lin2)
+    print('Training Linear SOM quantization model:')
+    train(epoch, model_lin5, optimizer_lin5)
     print('Training RNN sign quantization model:')
     train(epoch, model_RNN1, optimizer_RNN1)
     print('Training LSTM sign quantization model:')
@@ -193,7 +198,10 @@ print('\n\nTESTING...')
 print('Testing Linear sign quantization model:')
 test(model_lin1)
 print('Testing Linear uniform quantization model:')
-test(model_lin2, Quantization_codebook)
+test(model_lin2)
+print('Testing Linear SOM quantization model:')
+model_SOMtest = linearModels.UniformQuantizerNet(model_lin5.testCodebook)
+test(model_SOMtest)
 print('Testing RNN sign quantization model:')
 test(model_RNN1)
 print('Testing LSTM sign quantization model:')

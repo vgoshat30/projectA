@@ -44,13 +44,19 @@ def get_optimal_word(input, codebook):
             qunatized_word: float containing the output word of
             the quantizer.
     """
-
+    codewordIdx = 0;
     qunatized_word = codebook[0]
     if input > codebook[-1]:
         qunatized_word = codebook[-1]
+        codewordIdx = len(codebook) - 1
+        return qunatized_word, codewordIdx
     for ii in range(0, len(codebook) - 1):
         if(input > codebook[ii] and input < codebook[ii + 1]):
-            qunatized_word = codebook[ii] if input <= (
-                (codebook[ii + 1] - codebook[ii])/2) else codebook[ii + 1]
-            return qunatized_word
-    return qunatized_word
+            if input <= ((codebook[ii + 1] - codebook[ii])/2):
+                qunatized_word = codebook[ii]
+                codewordIdx = ii
+            else:
+                qunatized_word = codebook[ii + 1]
+                codewordIdx = ii + 1
+            return qunatized_word, codewordIdx
+    return qunatized_word, codewordIdx

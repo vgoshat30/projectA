@@ -65,6 +65,28 @@ class UniformQuantizerNet(nn.Module):
         x = self.l4(x)
         return self.l5(x)
 
+class SOMQuantizerNet(nn.Module):
+
+    def __init__(self, codebook):
+        super(SOMQuantizerNet, self).__init__()
+        self.l1 = nn.Linear(240, 520)
+        # See Hardware-Limited Task-Based Quantization Proposion 3. for the
+        # choice of output features
+        self.l2 = nn.Linear(520, 80)
+        self.l3 = nn.Linear(80, 240)
+        self.l4 = nn.Linear(240, 120)
+        self.l5 = nn.Linear(120, 80)
+        self.q1 = LearningQuantizer.LearningQuantizerFunction.apply
+        self.codebook = codebook
+        self.testCodebook = codebook
+
+    def forward(self, x):
+        x = self.l1(x)
+        x = self.l2(x)
+        x, self.testCodebook = self.q1(x, self.codebook, self.testCodebook)
+        x = self.l3(x)
+        x = self.l4(x)
+        return self.l5(x)
 
 class AnalogProcessNet(nn.Module):
     '''A NN performind the analog pre-processing before the quantizers
