@@ -59,6 +59,7 @@ def trainAnalogDigital(epoch, modelAnalog, modelDigital,
                 epoch+1, batch_idx * len(data), len(trainLoader.dataset),
                 100. * batch_idx / len(trainLoader), lossAnalog))
 
+    modelAnalog.eval()
     # Train digital NN
     for batch_idx, (data, target) in enumerate(trainLoader):
 
@@ -79,23 +80,6 @@ def trainAnalogDigital(epoch, modelAnalog, modelDigital,
                 100. * batch_idx / len(trainLoader), lossDigital))
 
 
-def trainWithQuantizer(epoch, model, optimizer, codebook):
-    model.train()
-    for batch_idx, (data, target) in enumerate(trainLoader):
-        data, target = Variable(data.float()), Variable(target.float())
-
-        optimizer.zero_grad()
-        output = model(data, codebook)
-        loss = criterion(output.view(-1, 1), target.view(-1, 1))
-        loss.backward(retain_graph=True)
-        optimizer.step()
-
-        if batch_idx % 10 == 0:
-            print('Epoch: {} [{}/{} ({:.0f}%)]\tLinear Loss: {:.6f}'.format(
-                epoch+1, batch_idx * len(data), len(trainLoader.dataset),
-                100. * batch_idx / len(trainLoader), loss))
-
-
 def test(model):
     model.eval()
     test_loss = 0
@@ -106,22 +90,9 @@ def test(model):
         # sum up batch loss
         test_loss += criterion(output.view(-1, 1), target.view(-1, 1))
 
-    test_loss /= (len(test_loader.dataset)/BATCH_SIZE)
+    test_loss /= (len(testLoader.dataset)/BATCH_SIZE)
     print('\nTest set: Average loss: {:.4f}\n'.format(test_loss))
 
-
-def testWithQuantizer(model, codebook):
-    model.eval()
-    test_loss = 0
-
-    for batch_idx, (data, target) in enumerate(testLoader):
-        data, target = Variable(data.float()), Variable(target.float())
-        output = model(data, codebook)
-        # sum up batch loss
-        test_loss += criterion(output.view(-1, 1), target.view(-1, 1))
-
-    test_loss /= (len(test_loader.dataset)/BATCH_SIZE)
-    print('\nTest set: Average loss: {:.4f}\n'.format(test_loss))
 
 
 def justQuantize(input, codebook):
@@ -143,13 +114,13 @@ trainLoader = DataLoader(dataset=trainData, batch_size=BATCH_SIZE, shuffle=True)
 testData = ShlezDatasetTest()
 testLoader = DataLoader(dataset=testData, batch_size=BATCH_SIZE, shuffle=True)
 
-# Generate uniform code book using the variance of the tain data
-Quantization_codebook = UniformQuantizer.codebook_uniform(trainData.X_var, M)
-
+# Generate uniform codebooks
+X_codebook = UniformQuantizer.codebook_uniform(trainData.X_var, M)
+S_codebook = UniformQuantizer.codebook_uniform(trainData.S_var, M)
 # model_lin1: Basic linear network with sign activation as the quantization
 model_lin1 = linearModels.SignQuantizerNet()
 # model_lin2: Basic linear network with uniform quantization instead of sign
-model_lin2 = linearModels.UniformQuantizerNet(Quantization_codebook)
+model_lin2 = linearModels.UniformQuantizerNet(S_codebook)
 # model_lin3: Basic linear network which learns to prepare the analog signal
 # data for quantization
 model_lin3 = linearModels.AnalogProcessNet()
@@ -157,7 +128,7 @@ model_lin3 = linearModels.AnalogProcessNet()
 # processing after the quantization and results the channel coefficients
 model_lin4 = linearModels.DigitalProcessNet()
 # model_lin5: Basic linear network with SOM learning quantization instead of sign
-model_lin5 = linearModels.SOMQuantizerNet(Quantization_codebook)
+model_lin5 = linearModels.SOMQuantizerNet(S_codebook)
 # model_RNN1: Basic linear network with sign activation and pre-quantization
 # RNN layer
 model_RNN1 = RNNmodels.SignQuantizerNetRNN()
@@ -176,11 +147,19 @@ optimizer_RNN1 = optim.SGD(model_RNN1.parameters(), lr=0.01, momentum=0.5)
 optimizer_RNN2 = optim.SGD(model_RNN2.parameters(), lr=0.01, momentum=0.5)
 
 
+# responsible for the learning rate decay
+lambda_lin2 = lambda epoch: 0.8 ** epoch
+scheduler_lin2 = LambdaLR(optimizer_lin2, lr_lambda=lambda_lin2)
+lambda_lin3 = lambda epoch: 0.1 ** epoch
+scheduler_lin3 = LambdaLR(optimizer_lin3, lr_lambda=lambda_lin3)
+lambda_lin4 = lambda epoch: 0.1 ** epoch
+scheduler_lin4 = LambdaLR(optimizer_lin4, lr_lambda=lambda_lin4)
+
 print('\n\nTRAINING...')
 for epoch in range(0, EPOCHS):
-    print('Training Linear sign quantization model:')
+    print('Training analog - sign quantization- digital model:')
     trainAnalogDigital(epoch, model_lin3, model_lin4, optimizer_lin3,
-                       optimizer_lin4, Quantization_codebook)
+                       optimizer_lin4, S_codebook)
     print('Training Linear sign quantization model:')
     train(epoch, model_lin1, optimizer_lin1)
     print('Training Linear uniform quantization model:')
@@ -191,6 +170,10 @@ for epoch in range(0, EPOCHS):
     train(epoch, model_RNN1, optimizer_RNN1)
     print('Training LSTM sign quantization model:')
     train(epoch, model_RNN1, optimizer_RNN1)
+    # step the learning rate decay
+    scheduler_lin2.step()
+    scheduler_lin3.step()
+    scheduler_lin4.step()
 
 
 print('Quantization Rate: {:.3f}'.format(QUANTIZATION_RATE))

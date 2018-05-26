@@ -10,7 +10,7 @@
         layer and sign quantization
 
     SignQuantizerNetLSTM
-    
+
         A class containing the feed forward function: forward(self, x) with LSTM
         layer and sign quantization
 """
@@ -23,6 +23,7 @@ from torch.autograd import Variable
 import scipy.io as sio
 import numpy as np
 
+import LearningQuantizer
 from projectConstants import *
 
 
@@ -32,30 +33,27 @@ class SignQuantizerNetRNN(nn.Module):
         super(SignQuantizerNetRNN, self).__init__()
 
         # One cell RNN input_dim (240) -> output_dim (80).sequance: 1
-        self.rnn = nn.RNN(input_size=240, hidden_size=80)
+        self.rnn = nn.RNN(input_size=INPUT_DIMENSION, hidden_size=OUTPUT_DIMENSION)
 
         # hidden : (num_layers * num_directions, batch, hidden_size)
         # whether batch_first=True or False
-        self.hidden = Variable(torch.randn(1, BATCH_SIZE, 80))
-        self.l1 = nn.Linear(80, 240)
-        self.l2 = nn.Linear(240, 80)    # See Hardware-Limited Task-Based
+        self.hidden = Variable(torch.randn(1, BATCH_SIZE, OUTPUT_DIMENSION))
+        self.l1 = nn.Linear(OUTPUT_DIMENSION, 240)
+        self.l2 = nn.Linear(240, OUTPUT_DIMENSION)    # See Hardware-Limited Task-Based
         # Quantization Proposion 3. for the
         # choice of output features
-        self.l3 = nn.Linear(80, 240)
+        self.l3 = nn.Linear(OUTPUT_DIMENSION, 240)
         self.l4 = nn.Linear(240, 120)
-        self.l5 = nn.Linear(120, 80)
+        self.l5 = nn.Linear(120, OUTPUT_DIMENSION)
+        self.q1 = LearningQuantizer.signActivation.apply
 
     def forward(self, x):
-        """
-            The feed forward
-            x rank (seq_len = 1, batch = BATCH_SIZE, input_size = 240)
-        """
-        x = x.view(1, BATCH_SIZE, 240)
+        x = x.view(1, BATCH_SIZE, INPUT_DIMENSION)
         x, self.hidden = self.rnn(x, self.hidden)
-        x = x.view(BATCH_SIZE, 80)
+        x = x.view(BATCH_SIZE, OUTPUT_DIMENSION)
         x = self.l1(x)
         x = self.l2(x)
-        x = torch.sign(x)
+        x = self.q1(x)
         x = self.l3(x)
         x = self.l4(x)
         return self.l5(x)
@@ -67,32 +65,29 @@ class SignQuantizerNetLSTM(nn.Module):
         super(SignQuantizerNetLSTM, self).__init__()
 
         # LSTM input_dim (240) -> output_dim (80).sequance: 1
-        self.lstm = nn.LSTM(input_size=240, hidden_size=80)
+        self.lstm = nn.LSTM(input_size=INPUT_DIMENSION, hidden_size=OUTPUT_DIMENSION)
 
         # hidden : (num_layers * num_directions, batch, hidden_size)
         # whether batch_first=True or False
-        self.hidden = Variable(torch.randn(1, BATCH_SIZE, 80))
+        self.hidden = Variable(torch.randn(1, BATCH_SIZE, OUTPUT_DIMENSION))
         # cell : (num_layers * num_directions, batch, hidden_size)
-        self.cell = Variable(torch.randn(1, BATCH_SIZE, 80))
-        self.l1 = nn.Linear(80, 240)
-        self.l2 = nn.Linear(240, 80)    # See Hardware-Limited Task-Based
-        # Quantization Proposion 3. for the
+        self.cell = Variable(torch.randn(1, BATCH_SIZE, OUTPUT_DIMENSION))
+        self.l1 = nn.Linear(OUTPUT_DIMENSION, 240)
+        self.l2 = nn.Linear(240, OUTPUT_DIMENSION)
+        # See Hardware-Limited Task-Based Quantization Proposion 3. for the
         # choice of output features
-        self.l3 = nn.Linear(80, 240)
+        self.l3 = nn.Linear(OUTPUT_DIMENSION, 240)
         self.l4 = nn.Linear(240, 120)
-        self.l5 = nn.Linear(120, 80)
+        self.l5 = nn.Linear(120, OUTPUT_DIMENSION)
+        self.q1 = LearningQuantizer.signActivation.apply
 
     def forward(self, x):
-        """
-            The feed forward
-            x rank (seq_len = 1, batch = BATCH_SIZE, input_size = 240)
-        """
-        x = x.view(1, BATCH_SIZE, 240)
+        x = x.view(1, BATCH_SIZE, INPUT_DIMENSION)
         x, (self.hidden, self.cell) = self.lstm(x, (self.hidden, self.cell))
-        x = x.view(BATCH_SIZE, 80)
+        x = x.view(BATCH_SIZE, OUTPUT_DIMENSION)
         x = self.l1(x)
         x = self.l2(x)
-        x = torch.sign(x)
+        x = self.q1(x)
         x = self.l3(x)
         x = self.l4(x)
         return self.l5(x)

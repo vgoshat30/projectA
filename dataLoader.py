@@ -37,8 +37,10 @@ class ShlezDatasetTrain(Dataset):
         Sdata = shlezMat['trainS']
         # Expected value estimation
         self.X_mean = np.mean(Xdata)
+        self.S_mean = np.mean(Sdata)
         # Variance estimation
         self.X_var = np.mean((Xdata - self.X_mean) * (Xdata - self.X_mean))
+        self.S_var = np.mean((Sdata - self.S_mean) * (Sdata - self.S_mean))
         # Converting numpy arrays to pytorch tensors:
         self.X_data = torch.from_numpy(Xdata)
         self.S_data = torch.from_numpy(Sdata)

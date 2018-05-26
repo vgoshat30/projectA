@@ -5,9 +5,18 @@
     Returns
     -------
     SignQuantizerNet
-        A class containing the feed forward function: forward(self, x) and sign quantization
+        A class containing the feed forward function: forward(self, x) and
+        sign quantization
     UniformQuantizerNet
-        A class containing the feed forward function: forward(self, x) and uniform quantization
+        A class containing the feed forward function: forward(self, x) and
+        uniform quantization
+    SOMQuantizerNet
+        A class containing the feed forward function: forward(self, x) and
+        learning SOM quantization
+    AnalogProcessNet + DigitalProcessNet
+        Two classes responsible for the quantization process using two distinct
+        NN for the analog and the digital processes
+
 """
 
 import torch
@@ -26,18 +35,19 @@ class SignQuantizerNet(nn.Module):
 
     def __init__(self):
         super(SignQuantizerNet, self).__init__()
-        self.l1 = nn.Linear(240, 520)
+        self.l1 = nn.Linear(INPUT_DIMENSION, 520)
         # See Hardware-Limited Task-Based Quantization Proposion 3. for the
         # choice of output features
-        self.l2 = nn.Linear(520, 80)
-        self.l3 = nn.Linear(80, 240)
+        self.l2 = nn.Linear(520, OUTPUT_DIMENSION)
+        self.l3 = nn.Linear(OUTPUT_DIMENSION, 240)
         self.l4 = nn.Linear(240, 120)
-        self.l5 = nn.Linear(120, 80)
+        self.l5 = nn.Linear(120, OUTPUT_DIMENSION)
+        self.q1 = LearningQuantizer.signActivation.apply
 
     def forward(self, x):
         x = self.l1(x)
         x = self.l2(x)
-        x = torch.sign(x)
+        x = self.q1(x)
         x = self.l3(x)
         x = self.l4(x)
         return self.l5(x)
@@ -47,13 +57,13 @@ class UniformQuantizerNet(nn.Module):
 
     def __init__(self, codebook):
         super(UniformQuantizerNet, self).__init__()
-        self.l1 = nn.Linear(240, 520)
+        self.l1 = nn.Linear(INPUT_DIMENSION, 520)
         # See Hardware-Limited Task-Based Quantization Proposion 3. for the
         # choice of output features
-        self.l2 = nn.Linear(520, 80)
-        self.l3 = nn.Linear(80, 240)
+        self.l2 = nn.Linear(520, OUTPUT_DIMENSION)
+        self.l3 = nn.Linear(OUTPUT_DIMENSION, 240)
         self.l4 = nn.Linear(240, 120)
-        self.l5 = nn.Linear(120, 80)
+        self.l5 = nn.Linear(120, OUTPUT_DIMENSION)
         self.q1 = LearningQuantizer.QuantizationFunction.apply
         self.codebook = codebook
 
@@ -69,13 +79,13 @@ class SOMQuantizerNet(nn.Module):
 
     def __init__(self, codebook):
         super(SOMQuantizerNet, self).__init__()
-        self.l1 = nn.Linear(240, 520)
+        self.l1 = nn.Linear(INPUT_DIMENSION, 520)
         # See Hardware-Limited Task-Based Quantization Proposion 3. for the
         # choice of output features
-        self.l2 = nn.Linear(520, 80)
-        self.l3 = nn.Linear(80, 240)
+        self.l2 = nn.Linear(520, OUTPUT_DIMENSION)
+        self.l3 = nn.Linear(OUTPUT_DIMENSION, 240)
         self.l4 = nn.Linear(240, 120)
-        self.l5 = nn.Linear(120, 80)
+        self.l5 = nn.Linear(120, OUTPUT_DIMENSION)
         self.q1 = LearningQuantizer.LearningQuantizerFunction.apply
         self.codebook = codebook
         self.testCodebook = codebook
@@ -103,11 +113,11 @@ class AnalogProcessNet(nn.Module):
 
     def __init__(self):
         super(AnalogProcessNet, self).__init__()
-        self.l1 = nn.Linear(240, 520)
+        self.l1 = nn.Linear(INPUT_DIMENSION, 520)
         self.l2 = nn.Linear(520, 80)
         self.l3 = nn.Linear(80, 240)
         self.l4 = nn.Linear(240, 120)
-        self.l5 = nn.Linear(120, 80)
+        self.l5 = nn.Linear(120, OUTPUT_DIMENSION)
 
     def forward(self, x):
         x = self.l1(x)
@@ -130,11 +140,11 @@ class DigitalProcessNet(nn.Module):
 
     def __init__(self):
         super(DigitalProcessNet, self).__init__()
-        self.l1 = nn.Linear(80, 340)
+        self.l1 = nn.Linear(OUTPUT_DIMENSION, 340)
         self.l2 = nn.Linear(340, 100)
         self.l3 = nn.Linear(100, 80)
         self.l4 = nn.Linear(80, 300)
-        self.l5 = nn.Linear(300, 80)
+        self.l5 = nn.Linear(300, OUTPUT_DIMENSION)
 
     def forward(self, x):
         x = self.l1(x)
