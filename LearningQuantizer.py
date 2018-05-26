@@ -4,6 +4,7 @@ from torch.nn.parameter import Parameter
 from torch.nn.modules.module import Module
 import UniformQuantizer
 
+
 # Inherit from Function
 class QuantizationFunction(torch.autograd.Function):
     """Applies a quantization process to the incoming data.
@@ -35,7 +36,8 @@ class QuantizationFunction(torch.autograd.Function):
         qunatized_input = torch.zeros(input.size())
         for ii in range(0, input_data.size(0)):
             for jj in range(0, input_data.size(1)):
-                qunatized_input[ii][jj] = UniformQuantizer.get_optimal_word(input_numpy[ii, jj], codebook)
+                qunatized_input[ii][jj] = UniformQuantizer.get_optimal_word(
+                    input_numpy[ii, jj], codebook)
         return qunatized_input
 
     # This function has only a single output, so it gets only one gradient

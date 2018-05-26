@@ -26,9 +26,9 @@ def codebook_uniform(input_variance, M):
         codebook.append(LowerBound + ii*dx)
     return tuple(codebook)
 
+
 def get_optimal_word(input, codebook):
     """Return the matching codeword to the input
-
 
     Parameters
     ----------
@@ -45,12 +45,12 @@ def get_optimal_word(input, codebook):
             the quantizer.
     """
 
-
     qunatized_word = codebook[0]
     if input > codebook[-1]:
         qunatized_word = codebook[-1]
     for ii in range(0, len(codebook) - 1):
         if(input > codebook[ii] and input < codebook[ii + 1]):
-            qunatized_word = codebook[ii] if input <= ((codebook[ii + 1] - codebook[ii])/2) else codebook[ii + 1]
+            qunatized_word = codebook[ii] if input <= (
+                (codebook[ii + 1] - codebook[ii])/2) else codebook[ii + 1]
             return qunatized_word
     return qunatized_word
