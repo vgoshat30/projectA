@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import random
 from datetime import datetime
+from cycler import cycler
 
 
 def reandomTickPos(x, y):
@@ -163,7 +164,7 @@ def logResult(rate, error, *handleMethod, **kwargs):
                 continue
             # Unmark all other points
             resList[ii].set(marker='x', markersize=regMarkerSize,
-                            color='orange')
+                            color=pointsColor)
             # Show all result indecies
             indexText[ii].set(alpha=indexAlpha)
             # Hide all textBoxes
@@ -202,6 +203,14 @@ def logResult(rate, error, *handleMethod, **kwargs):
               'Asymptotic optimal task-ignorant',
               'LBG task-ignorant',
               'Hardware limited upper bound']
+
+    markers = ['X', '', '', '', '', '']
+    lineStyles = [':', '--', '-', '--', '-', '--']
+    linecolors = ['black', 'red', 'red', 'blue', 'red', 'lime']
+    lineWidths = [1, 1, 1, 1, 1, 1.5]
+    markerSizes = [3, 1, 1, 1, 1, 1]
+    markerLinewidths = [1, 1, 1, 1, 1, 1]
+    pointsColor = 'orange'
 
     # Load data from file
     theoryBounds = sio.loadmat(matFileName)
@@ -261,7 +270,10 @@ def logResult(rate, error, *handleMethod, **kwargs):
         # Plot all theoretical bounds
         for ii in range(0, m_fCurves.shape[0]):
             if whichToPlot[ii]:
-                ax.plot(v_fRate[0], m_fCurves[ii, :], label=labels[ii])
+                ax.plot(v_fRate[0], m_fCurves[ii, :], label=labels[ii],
+                        marker=markers[ii], color=linecolors[ii],
+                        linestyle=lineStyles[ii], linewidth=lineWidths[ii],
+                        markersize=markerSizes[ii])
 
         # Plot fill
         ax.fill(xFill, yFill, c='c', alpha=0.3)
@@ -269,11 +281,11 @@ def logResult(rate, error, *handleMethod, **kwargs):
         # Plot previous results
         resList = ax.plot(rateResults, errorResults, marker='x',
                           markersize=regMarkerSize,
-                          color="orange", picker=5)
+                          color=pointsColor, picker=5)
 
         # Plot result
         resList += ax.plot(rate, error, marker='x',
-                           markersize=regMarkerSize, color="orange",
+                           markersize=regMarkerSize, color=pointsColor,
                            label='Results', picker=5)
 
         indexText = []

@@ -20,6 +20,7 @@ import linearModels
 import RNNmodels
 from projectConstants import *
 import UniformQuantizer
+import testLogger
 
 
 def train(epoch, model, optimizer):
@@ -91,8 +92,8 @@ def test(model):
         test_loss += criterion(output.view(-1, 1), target.view(-1, 1))
 
     test_loss /= (len(testLoader.dataset)/BATCH_SIZE)
-    print('\nTest average loss: {:.4f}\n'.format(test_loss))
 
+    return test_loss.detach().numpy()
 
 
 def justQuantize(input, codebook):
@@ -148,49 +149,65 @@ optimizer_RNN2 = optim.SGD(model_RNN2.parameters(), lr=0.01, momentum=0.5)
 
 
 # responsible for the learning rate decay
-lambda_lin2 = lambda epoch: 0.8 ** epoch
+def lambda_lin2(epoch): return 0.8 ** epoch
+
+
 scheduler_lin2 = optim.lr_scheduler.LambdaLR(optimizer_lin2, lr_lambda=lambda_lin2)
-lambda_lin3 = lambda epoch: 0.1 ** epoch
+
+
+def lambda_lin3(epoch): return 0.1 ** epoch
+
+
 scheduler_lin3 = optim.lr_scheduler.LambdaLR(optimizer_lin3, lr_lambda=lambda_lin3)
-lambda_lin4 = lambda epoch: 0.1 ** epoch
+
+
+def lambda_lin4(epoch): return 0.1 ** epoch
+
+
 scheduler_lin4 = optim.lr_scheduler.LambdaLR(optimizer_lin4, lr_lambda=lambda_lin4)
+
+whichModelToTrain = 2
 
 print('\n\nTRAINING...')
 for epoch in range(0, EPOCHS):
     print('\nTraining Linear sign quantization model:')
     train(epoch, model_lin1, optimizer_lin1)
-    print('\nTraining Linear uniform codebook quantization model:')
-    train(epoch, model_lin2, optimizer_lin2)
-    print('\nTraining Linear SOM learning codebook quantization model:')
-    train(epoch, model_lin5, optimizer_lin5)
-    print('\nTraining analog - sign quantization- digital model:')
-    trainAnalogDigital(epoch, model_lin3, model_lin4, optimizer_lin3,
-                       optimizer_lin4, S_codebook)
-    print('\nTraining RNN sign quantization model:')
-    train(epoch, model_RNN1, optimizer_RNN1)
-    print('\nTraining LSTM sign quantization model:')
-    train(epoch, model_RNN2, optimizer_RNN2)
+    # print('\nTraining Linear uniform codebook quantization model:')
+    # train(epoch, model_lin2, optimizer_lin2)
+    # print('\nTraining Linear SOM learning codebook quantization model:')
+    # train(epoch, model_lin5, optimizer_lin5)
+    # print('\nTraining analog - sign quantization- digital model:')
+    # trainAnalogDigital(epoch, model_lin3, model_lin4, optimizer_lin3,
+    #                    optimizer_lin4, S_codebook)
+    # print('\nTraining RNN sign quantization model:')
+    # train(epoch, model_RNN1, optimizer_RNN1)
+    # print('\nTraining LSTM sign quantization model:')
+    # train(epoch, model_RNN2, optimizer_RNN2)
     # step the learning rate decay
-    scheduler_lin2.step()
-    scheduler_lin3.step()
-    scheduler_lin4.step()
+    # scheduler_lin2.step()
+    # scheduler_lin3.step()
+    # scheduler_lin4.step()
 
 
-print('Quantization Rate: {:.3f}'.format(QUANTIZATION_RATE))
-print('\n\nTESTING...')
-print('===========================================================================')
-print('\nTesting Linear sign quantization model:')
+print('\n\n==============\nTESTING...\n==============\n\n')
+print('\nTesting Linear sign quantization model:\n')
 test(model_lin1)
-print('===========================================================================')
-print('\nTesting Linear uniform quantization model:')
-test(model_lin2)
-print('===========================================================================')
-print('\nTesting Linear SOM quantization model:')
-model_SOM = linearModels.UniformQuantizerNet(model_lin5.testCodebook)
-test(model_SOM)
-print('===========================================================================')
-print('\nTesting RNN sign quantization model:')
-test(model_RNN1)
-print('===========================================================================')
-print('\nTesting LSTM sign quantization model:')
-test(model_RNN2)
+model_lin1_loss = test(model_lin1)
+print('\nRate: {:.4f}\nAverage loss: {:.4f}'.format(QUANTIZATION_RATE,
+                                                    model_lin1_loss))
+testLogger.logResult(QUANTIZATION_RATE, model_lin1_loss,
+                     algorithm='Linear sign')
+# print('=======================================================================')
+# print('\nTesting Linear uniform quantization model:')
+# model_lin2_loss = test(model_lin2)
+# print('\nTest average loss: {:.4f}\n'.format(model_lin2_loss))
+# print('=======================================================================')
+# print('\nTesting Linear SOM quantization model:')
+# model_SOM = linearModels.UniformQuantizerNet(model_lin5.testCodebook)
+# test(model_SOM)
+# print('=======================================================================')
+# print('\nTesting RNN sign quantization model:')
+# test(model_RNN1)
+# print('=======================================================================')
+# print('\nTesting LSTM sign quantization model:')
+# test(model_RNN2)
