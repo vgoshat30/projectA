@@ -17,12 +17,79 @@ def reandomTickPos(x, y):
     return x+noise*randX, y+noise*randY
 
 
+def removeCellFormat(formatted):
+    '''Clear a string formatting caused by saving as cell in mat file
+
+        Parameters
+        ----------
+        formatted
+            Formatted str (or numpy array - its casted to string anyway) to be
+            cleared.
+
+        Returns
+        -------
+        unformatted
+            Unformatted string.
+
+        Example
+        -------
+        ans = removeCellFormat(['hello'])
+        print(ans)
+        >>> hello
+    '''
+    unformatted = str(formatted).replace("[", "")
+    unformatted = unformatted.replace("]", "")
+    unformatted = unformatted.replace("'", "")
+    return unformatted
+
+
+def getTextAlignment(x, y, textOffset):
+    '''Set the textbox alignment according to its position on the graph
+
+        Parameters
+        ----------
+        x   y
+            x and y values of the datapoint
+
+        Returns
+        -------
+        (ha, va, xOffset, yOffset)
+            Horizontal alignment and vertical alignment and offset of tooltop
+            from the datapoint
+    '''
+    axs = plt.gca()
+    xlim = axs.get_xlim()
+    ylim = axs.get_ylim()
+
+    if x < xlim[1] / 2:
+        ha = 'left'
+        xOffset = textOffset
+    else:
+        ha = 'right'
+        xOffset = -textOffset
+
+    if y < ylim[1]/2:
+        va = 'bottom'
+        yOffset = textOffset
+    else:
+        va = 'top'
+        yOffset = -textOffset
+
+    return (ha, va, xOffset, yOffset)
+
+
 def logResult(rate, error, *handleMethod, **kwargs):
     '''Plot the result compares to the theory
+
+        IMPORTANT!!!
+            The function opens a figure which will pause all your code until
+            closed! If you want the code to continue, use 'dontshow' (see below)
 
         Opens a new figure, plots all the theoretical bounds and add a point at
         (rate, error). Also showing all previously saved results and enumerates
         them on the plot itself.
+        Click any datapoint to oped a tooltip with all the information available
+        for it.
 
         Parameters
         ----------
@@ -53,7 +120,7 @@ def logResult(rate, error, *handleMethod, **kwargs):
 
             runtime
 
-                Specify a string with the runtime of the algorithm
+                datetime.datetime object specifies the runtime of the algorithm
     '''
 
     def pick_handler(event):
@@ -62,11 +129,9 @@ def logResult(rate, error, *handleMethod, **kwargs):
         # Get the pressed artist
         artist = event.artist
 
-        if artist.get_marker is 'o':
-            clearDatatips(event)
+        if artist.get_marker() is 'o':
+            clearDatatips(event, -1)
             return
-
-        clearDatatips(event)
 
         # Mark the chosen point
         artist.set(marker='o', markersize=chosenMarkersize, color='r')
@@ -82,15 +147,20 @@ def logResult(rate, error, *handleMethod, **kwargs):
         datatips[chosenIndex].set(alpha=datatipAlpha,
                                   bbox=textBoxes[chosenIndex])
 
+        # Clear other dataTips
+        clearDatatips(event, chosenIndex)
+
         # Update figure
         fig.canvas.draw()
         fig.canvas.flush_events()
 
-    def clearDatatips(event):
+    def clearDatatips(event, exeptInex):
         '''Clears all datatips
         '''
 
         for ii in range(0, len(resList)):
+            if ii is exeptInex:
+                continue
             # Unmark all other points
             resList[ii].set(marker='x', markersize=regMarkerSize,
                             color='orange')
@@ -115,6 +185,7 @@ def logResult(rate, error, *handleMethod, **kwargs):
     dataTipFontsize = 6
     textboxAlpha = 0.8
     textOffset = 0.015
+    sizeOfFigure = (8, 5)  # in inches
 
     # Define which lines to plot
     whichToPlot = [1,  # No quantization
@@ -151,6 +222,7 @@ def logResult(rate, error, *handleMethod, **kwargs):
 
     # Check all var args
     algToSave = np.append(algorithmName, '')
+    timeToSave = np.append(timeResults, np.array(str(datetime.now())))
     runTimeToSave = np.append(runTimeResults, '')
     for key in kwargs:
         # Check if an algorithm name provided
@@ -158,7 +230,7 @@ def logResult(rate, error, *handleMethod, **kwargs):
             algToSave[-1] = kwargs[key]
         # Check if runtime provided
         if key is 'runtime':
-            runTimeToSave[-1] = kwargs[key]
+            runTimeToSave[-1] = str(kwargs[key])
 
     if not(('dontsave' in handleMethod)):
         # Append the results to the mat file
@@ -168,8 +240,7 @@ def logResult(rate, error, *handleMethod, **kwargs):
                                                            np.array(rate)),
                                   'errorResults': np.append(errorResults,
                                                             np.array(error)),
-                                  'time': np.append(timeResults,
-                                                    np.array(str(datetime.now()))),
+                                  'time': timeToSave,
                                   'algorithmName': algToSave,
                                   'runTime': runTimeToSave})
         print('Saved result of test number', rateResults.shape[1]+1)
@@ -179,12 +250,13 @@ def logResult(rate, error, *handleMethod, **kwargs):
         plt.close('all')
 
         # Create figure and ge axes handle
-        fig = plt.figure()
+        fig = plt.figure(figsize=sizeOfFigure)
         ax = fig.add_subplot(111)
 
         # Connect figure to callback
         fig.canvas.mpl_connect('pick_event', pick_handler)
-        fig.canvas.mpl_connect('figure_leave_event', clearDatatips)
+        fig.canvas.mpl_connect('figure_leave_event', lambda event,
+                               temp=-1: clearDatatips(event, temp))
 
         # Plot all theoretical bounds
         for ii in range(0, m_fCurves.shape[0]):
@@ -218,37 +290,28 @@ def logResult(rate, error, *handleMethod, **kwargs):
             textBoxes.append(dict(boxstyle='round', facecolor='wheat',
                                   alpha=0))
             # Create all data tooltip and dont display them
-            currIterDateTime = datetime.strptime(timeResults[ii],
+            currIterDateTime = datetime.strptime(timeToSave[ii],
                                                  '%Y-%m-%d %H:%M:%S.%f')
+            if runTimeToSave[ii]:
+                currRuntime = datetime.strptime(removeCellFormat(runTimeToSave[ii]),
+                                                '%Y-%m-%d %H:%M:%S.%f')
             if algToSave[ii] and runTimeToSave[ii]:
-                algName = str(algToSave[ii]).replace("[", "")
-                algName = algName.replace("]", "")
-                algName = algName.replace("'", "")
-                runT = str(runTimeToSave[ii]).replace("[", "")
-                runT = runT.replace("]", "")
-                runT = runT.replace("'", "")
                 textToDisplay = 'Rate: ' + str(rateResults[0, ii]) + \
                     '\nAvg. Distortion: ' + str(errorResults[0, ii]) + \
-                    '\nAlgorithm:\n' + algName + \
-                    '\nRuntime: ' + runT + \
+                    '\nAlgorithm:\n' + removeCellFormat(algToSave[ii]) + \
+                    '\nRuntime: ' + currRuntime.strftime('%H:%M:%S.%f') + \
                     '\nDate: ' + currIterDateTime.strftime('%d/%m/%y') + \
                     '\nTime: ' + currIterDateTime.strftime('%H:%M:%S')
             elif algToSave[ii] and not(runTimeToSave[ii]):
-                algName = str(algToSave[ii]).replace("[", "")
-                algName = algName.replace("]", "")
-                algName = algName.replace("'", "")
                 textToDisplay = 'Rate: ' + str(rateResults[0, ii]) + \
                     '\nAvg. Distortion: ' + str(errorResults[0, ii]) + \
-                    '\nAlgorithm:\n' + algName + \
+                    '\nAlgorithm:\n' + removeCellFormat(algToSave[ii]) + \
                     '\nDate: ' + currIterDateTime.strftime('%d/%m/%y') + \
                     '\nTime: ' + currIterDateTime.strftime('%H:%M:%S')
             elif not(algToSave[ii]) and runTimeToSave[ii]:
-                runT = str(runTimeToSave[ii]).replace("[", "")
-                runT = runT.replace("]", "")
-                runT = runT.replace("'", "")
                 textToDisplay = 'Rate: ' + str(rateResults[0, ii]) + \
                     '\nAvg. Distortion: ' + str(errorResults[0, ii]) + \
-                    '\nRuntime: ' + runT + \
+                    '\nRuntime: ' + currRuntime.strftime('%H:%M:%S.%f') + \
                     '\nDate: ' + currIterDateTime.strftime('%d/%m/%y') + \
                     '\nTime: ' + currIterDateTime.strftime('%H:%M:%S')
             else:
@@ -257,12 +320,15 @@ def logResult(rate, error, *handleMethod, **kwargs):
                     '\nDate: ' + currIterDateTime.strftime('%d/%m/%y') + \
                     '\nTime: ' + currIterDateTime.strftime('%H:%M:%S')
 
-            currIterDateTime.strftime('%H:%M:%S')
-            datatips.append(ax.text(resList[ii].get_xdata()+textOffset,
-                                    resList[ii].get_ydata()+textOffset,
+            textAlign = getTextAlignment(resList[ii].get_xdata(),
+                                         resList[ii].get_ydata(),
+                                         textOffset)
+            datatips.append(ax.text(resList[ii].get_xdata()+textAlign[2],
+                                    resList[ii].get_ydata()+textAlign[3],
                                     textToDisplay,
                                     alpha=0, fontsize=dataTipFontsize,
-                                    bbox=textBoxes[ii]))
+                                    bbox=textBoxes[ii],
+                                    ha=textAlign[0], va=textAlign[1]))
 
         # Last result index text
         lastResultIndex = rateResults.shape[1]
@@ -274,36 +340,29 @@ def logResult(rate, error, *handleMethod, **kwargs):
         # CLast textbox
         textBoxes.append(dict(boxstyle='round', facecolor='wheat',
                               alpha=0))
+        currIterDateTime = datetime.strptime(timeToSave[-1],
+                                             '%Y-%m-%d %H:%M:%S.%f')
+        if runTimeToSave[-1]:
+            currRuntime = datetime.strptime(removeCellFormat(runTimeToSave[-1]),
+                                            '%Y-%m-%d %H:%M:%S.%f')
         # Last result datatip
         if algToSave[-1] and runTimeToSave[-1]:
-            algName = str(algToSave[-1]).replace("[", "")
-            algName = algName.replace("]", "")
-            algName = algName.replace("'", "")
-            runT = str(runTimeToSave[-1]).replace("[", "")
-            runT = runT.replace("]", "")
-            runT = runT.replace("'", "")
             textToDisplay = 'Rate: ' + str(rate) + \
                 '\nAvg. Distortion: ' + str(error) + \
-                '\nAlgorithm:\n' + algName + \
-                '\nRuntime: ' + runT + \
+                '\nAlgorithm:\n' + removeCellFormat(algToSave[-1]) + \
+                '\nRuntime: ' + currRuntime.strftime('%H:%M:%S.%f') + \
                 '\nDate: ' + currIterDateTime.strftime('%d/%m/%y') + \
                 '\nTime: ' + currIterDateTime.strftime('%H:%M:%S')
         elif algToSave[-1] and not(runTimeToSave[-1]):
-            algName = str(algToSave[-1]).replace("[", "")
-            algName = algName.replace("]", "")
-            algName = algName.replace("'", "")
             textToDisplay = 'Rate: ' + str(rate) + \
                 '\nAvg. Distortion: ' + str(error) + \
-                '\nAlgorithm:\n' + algName + \
+                '\nAlgorithm:\n' + removeCellFormat(algToSave[-1]) + \
                 '\nDate: ' + currIterDateTime.strftime('%d/%m/%y') + \
                 '\nTime: ' + currIterDateTime.strftime('%H:%M:%S')
         elif not(algToSave[-1]) and runTimeToSave[-1]:
-            runT = str(runTimeToSave[-1]).replace("[", "")
-            runT = runT.replace("]", "")
-            runT = runT.replace("'", "")
             textToDisplay = 'Rate: ' + str(rate) + \
                 '\nAvg. Distortion: ' + str(error) + \
-                '\nRuntime: ' + runT + \
+                '\nRuntime: ' + currRuntime.strftime('%H:%M:%S.%f') + \
                 '\nDate: ' + datetime.now().strftime('%d/%m/%y') + \
                 '\nTime: ' + datetime.now().strftime('%H:%M:%S')
         else:
@@ -311,17 +370,21 @@ def logResult(rate, error, *handleMethod, **kwargs):
                 '\nAve. Distortion: ' + str(error) + \
                 '\nDate: ' + datetime.now().strftime('%d/%m/%y') + \
                 '\nTime: ' + datetime.now().strftime('%H:%M:%S')
+        textAlign = getTextAlignment(resList[lastResultIndex].get_xdata(),
+                                     resList[lastResultIndex].get_ydata(),
+                                     textOffset)
         datatips.append(ax.text(resList[lastResultIndex].get_xdata() +
-                                textOffset,
+                                textAlign[2],
                                 resList[lastResultIndex].get_ydata() +
-                                textOffset, textToDisplay,
+                                textAlign[3], textToDisplay,
                                 alpha=0, fontsize=dataTipFontsize,
-                                bbox=textBoxes[lastResultIndex]))
+                                bbox=textBoxes[lastResultIndex],
+                                ha=textAlign[0], va=textAlign[1]))
 
         # Labeling and graph appearance
         plt.xlabel('Rate', fontsize=18, fontname='Times New Roman')
         plt.ylabel('Average Distortion', fontsize=18, fontname='Times New Roman')
-        ax.legend(fontsize=8)
+        ax.legend(fontsize=6)
         ax.autoscale(enable=True, axis='x', tight=True)
         # Show figure
         plt.show()
