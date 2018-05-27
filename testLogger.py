@@ -5,6 +5,41 @@ import random
 from datetime import datetime
 from cycler import cycler
 
+matFileName = 'testLog.mat'
+
+chosenMarkersize = 2
+regMarkerSize = 5
+indexAlpha = 0.5
+datatipAlpha = 1
+dataTipFontsize = 6
+textboxAlpha = 0.8
+textOffset = 0.015
+sizeOfFigure = (8, 5)  # in inches
+
+# Define which lines to plot
+whichToPlot = [1,  # No quantization
+               1,  # Asymptotic optimal task-based
+               0,  # LBG task-based
+               1,  # Asymptotic optimal task-ignorant
+               0,  # LBG task-ignorant
+               1]  # Hardware limited upper bound
+
+# Set the legend labels
+labels = ['No quantization',
+          'Asymptotic optimal task-based',
+          'LBG task-based',
+          'Asymptotic optimal task-ignorant',
+          'LBG task-ignorant',
+          'Hardware limited upper bound']
+
+markers = ['x', '', '', '', '', '']
+lineStyles = [':', '--', '-', '--', '-', '--']
+linecolors = ['black', 'red', 'red', 'blue', 'red', 'lime']
+lineWidths = [1, 1, 1, 1, 1, 1.5]
+markerSizes = [4, 1, 1, 1, 1, 1]
+markerLinewidths = [1, 1, 1, 1, 1, 1]
+pointsColor = 'orange'
+
 
 def reandomTickPos(x, y):
     noise = 0.03
@@ -121,7 +156,8 @@ def logResult(rate, error, *handleMethod, **kwargs):
 
             runtime
 
-                datetime.datetime object specifies the runtime of the algorithm
+                The runtime of the algorithm. Accepts only timedelta types of
+                the datetime packege
     '''
 
     def pick_handler(event):
@@ -176,41 +212,6 @@ def logResult(rate, error, *handleMethod, **kwargs):
         # Update figure
         fig.canvas.draw()
         fig.canvas.flush_events()
-
-    matFileName = 'testLog.mat'
-
-    chosenMarkersize = 2
-    regMarkerSize = 5
-    indexAlpha = 0.5
-    datatipAlpha = 1
-    dataTipFontsize = 6
-    textboxAlpha = 0.8
-    textOffset = 0.015
-    sizeOfFigure = (8, 5)  # in inches
-
-    # Define which lines to plot
-    whichToPlot = [1,  # No quantization
-                   1,  # Asymptotic optimal task-based
-                   0,  # LBG task-based
-                   1,  # Asymptotic optimal task-ignorant
-                   0,  # LBG task-ignorant
-                   1]  # Hardware limited upper bound
-
-    # Set the legend labels
-    labels = ['No quantization',
-              'Asymptotic optimal task-based',
-              'LBG task-based',
-              'Asymptotic optimal task-ignorant',
-              'LBG task-ignorant',
-              'Hardware limited upper bound']
-
-    markers = ['X', '', '', '', '', '']
-    lineStyles = [':', '--', '-', '--', '-', '--']
-    linecolors = ['black', 'red', 'red', 'blue', 'red', 'lime']
-    lineWidths = [1, 1, 1, 1, 1, 1.5]
-    markerSizes = [3, 1, 1, 1, 1, 1]
-    markerLinewidths = [1, 1, 1, 1, 1, 1]
-    pointsColor = 'orange'
 
     # Load data from file
     theoryBounds = sio.loadmat(matFileName)
@@ -306,7 +307,7 @@ def logResult(rate, error, *handleMethod, **kwargs):
                                                  '%Y-%m-%d %H:%M:%S.%f')
             if runTimeToSave[ii]:
                 currRuntime = datetime.strptime(removeCellFormat(runTimeToSave[ii]),
-                                                '%Y-%m-%d %H:%M:%S.%f')
+                                                '%H:%M:%S.%f')
             if algToSave[ii] and runTimeToSave[ii]:
                 textToDisplay = 'Rate: ' + str(rateResults[0, ii]) + \
                     '\nAvg. Distortion: ' + str(errorResults[0, ii]) + \
@@ -356,7 +357,7 @@ def logResult(rate, error, *handleMethod, **kwargs):
                                              '%Y-%m-%d %H:%M:%S.%f')
         if runTimeToSave[-1]:
             currRuntime = datetime.strptime(removeCellFormat(runTimeToSave[-1]),
-                                            '%Y-%m-%d %H:%M:%S.%f')
+                                            '%H:%M:%S.%f')
         # Last result datatip
         if algToSave[-1] and runTimeToSave[-1]:
             textToDisplay = 'Rate: ' + str(rate) + \
@@ -400,3 +401,55 @@ def logResult(rate, error, *handleMethod, **kwargs):
         ax.autoscale(enable=True, axis='x', tight=True)
         # Show figure
         plt.show()
+
+
+def deleteResult(*args, **kwargs):
+    '''Delete all or part of the data log
+
+        Parameters
+        ----------
+            optional (add as a string input, PLACE IN THE BEGINNING):
+
+                'clear'
+                    Reaets all the log
+
+            index
+                Specify index of test to delete. For example:
+                    deleteResult(index=1)
+                deletes the second test
+    '''
+    # Load data from file
+    theoryBounds = sio.loadmat(matFileName)
+
+    # Get x (rate) vector and y (errors) matrix and previous results rate and errors
+    m_fCurves = theoryBounds['m_fCurves']
+    v_fRate = theoryBounds['v_fRate']
+    rateResults = theoryBounds['rateResults']
+    errorResults = theoryBounds['errorResults']
+    runTimeResults = theoryBounds['runTime']
+    timeResults = theoryBounds['time']
+    algorithmName = theoryBounds['algorithmName']
+
+    for key in kwargs:
+        if key is 'index':
+            rateResults = np.delete(rateResults, kwargs[key])
+            errorResults = np.delete(errorResults, kwargs[key])
+            runTimeResults = np.delete(runTimeResults, kwargs[key])
+            timeResults = np.delete(timeResults, kwargs[key])
+            algorithmName = np.delete(algorithmName, kwargs[key])
+
+    if 'clear' in args:
+        rateResults = np.empty((0, 1), float)
+        errorResults = np.empty((0, 1), float)
+        runTimeResults = np.empty((0, 1), object)
+        timeResults = ''
+        algorithmName = np.empty((0, 1), object)
+
+    # Save data back to mat file
+    sio.savemat(matFileName, {'m_fCurves': m_fCurves,
+                              'v_fRate': v_fRate,
+                              'rateResults': rateResults,
+                              'errorResults': errorResults,
+                              'time': timeResults,
+                              'algorithmName': algorithmName,
+                              'runTime': runTimeResults})
