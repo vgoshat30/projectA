@@ -12,21 +12,21 @@ OUTPUT_DIMENSION = 80
 QUANTIZATION_BITS = 3
 M = int(math.pow(2, QUANTIZATION_BITS))
 QUANTIZATION_RATE = QUANTIZATION_BITS * OUTPUT_DIMENSION / INPUT_DIMENSION
-CODEBOOK_LR = 0.01
+CODEBOOK_LR = 0.1
 
 # Only uncommented models will be trained and tested
 modelsToActivate = [
-    # 'Linear sign quantization',
+    'Linear sign quantization',
     # 'Linear uniform codebook',
-    # 'Linear SOM learning codebook',
-    'Analog sign quantization',
+    #'Linear SOM learning codebook',
+    # 'Analog sign quantization',
     # 'RNN sign quantization',
     # 'LSTM sign quantization'
 ]
 
 # ------------------------------
 # Epochs of each of the models
-EPOCHS_linSignQunat = DEFAULT_EPOCHS
+EPOCHS_linSignQunat = 7
 EPOCHS_linUniformQunat = DEFAULT_EPOCHS
 EPOCHS_linSOMQuant = DEFAULT_EPOCHS
 EPOCHS_ADSignQuant = DEFAULT_EPOCHS

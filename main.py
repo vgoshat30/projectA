@@ -21,8 +21,8 @@ import linearModels
 import RNNmodels
 from projectConstants import *
 import UniformQuantizer
-import testLogger
-import userInterface as UI
+import Logger as log
+import UserInterface as UI
 
 
 def train(modelname, epoch, model, optimizer):
@@ -84,23 +84,24 @@ def trainAnalogDigital(modelname, epoch, modelAnalog, modelDigital,
 
 
 def trainSOM(modelname, epoch, initCodebook):
-
+    print('Init Codebook:\n{0}'.format(initCodebook))
+    newCodebook = list(initCodebook)
     for batch_idx, (data, target) in enumerate(trainLoader):
         data, target = Variable(data.float()), Variable(target.float())
         target_numpy = target.data.numpy()
-        newCodebook = list(initCodebook)
         for ii in range(0, target.size(0)):
             for jj in range(0, target.size(1)):
                 itrVal, quantized_idx = UniformQuantizer.get_optimal_word(
                     target_numpy[ii, jj], tuple(newCodebook))
                 # update winner codeword
-                newCodebook[quantized_idx] = newCodebook[quantized_idx] + CODEBOOK_LR*(target_numpy[ii, jj] - itrVal)
-        testCodebook = tuple(newCodebook)
+                newCodebook[quantized_idx] = newCodebook[quantized_idx] + \
+                    CODEBOOK_LR*(target_numpy[ii, jj] - itrVal)
+    testCodebook = tuple(newCodebook)
+    print('SOM Codebook:\n{0}'.format(testCodebook))
     SOMtestModel = linearModels.UniformQuantizerNet(testCodebook)
     SOMtestOptim = optim.SGD(SOMtestModel.parameters(), lr=0.01, momentum=0.5)
     train(modelname, epoch, SOMtestModel, SOMtestOptim)
     return SOMtestModel
-
 
 
 def test(model):
@@ -140,7 +141,7 @@ testLoader = DataLoader(dataset=testData, batch_size=BATCH_SIZE, shuffle=True)
 # Generate uniform codebooks
 X_codebook = UniformQuantizer.codebook_uniform(trainData.X_var, M)
 S_codebook = UniformQuantizer.codebook_uniform(trainData.S_var, M)
-# model_lin1: Basic linear network with sign activation as the quantization
+# model_linSignQunat: Basic linear network with sign activation as the quantization
 model_linSignQunat = linearModels.SignQuantizerNet()
 # model_linUniformQunat: Basic linear network with uniform quantization instead of sign
 model_linUniformQunat = linearModels.UniformQuantizerNet(S_codebook)
@@ -173,19 +174,22 @@ optimizer_lstmSignQuant = optim.SGD(model_lstmSignQuant.parameters(), lr=0.01, m
 def lambda_linUniformQunat(epoch): return 0.8 ** epoch
 
 
-scheduler_linUniformQunat = optim.lr_scheduler.LambdaLR(optimizer_linUniformQunat, lr_lambda=lambda_linUniformQunat)
+scheduler_linUniformQunat = optim.lr_scheduler.LambdaLR(
+    optimizer_linUniformQunat, lr_lambda=lambda_linUniformQunat)
 
 
 def lambda_linAnalogSign(epoch): return 0.1 ** epoch
 
 
-scheduler_linAnalogSign = optim.lr_scheduler.LambdaLR(optimizer_linAnalogSign, lr_lambda=lambda_linAnalogSign)
+scheduler_linAnalogSign = optim.lr_scheduler.LambdaLR(
+    optimizer_linAnalogSign, lr_lambda=lambda_linAnalogSign)
 
 
 def lambda_linDigitalSign(epoch): return 0.1 ** epoch
 
 
-scheduler_linDigitalSign = optim.lr_scheduler.LambdaLR(optimizer_linDigitalSign, lr_lambda=lambda_linDigitalSign)
+scheduler_linDigitalSign = optim.lr_scheduler.LambdaLR(
+    optimizer_linDigitalSign, lr_lambda=lambda_linDigitalSign)
 
 
 ########################################################################
@@ -197,24 +201,30 @@ scheduler_linDigitalSign = optim.lr_scheduler.LambdaLR(optimizer_linDigitalSign,
 # ------------------------------
 
 UI.trainHeding()
-model_linSignQunat_runtime = datetime.now()
+
 if 'Linear sign quantization' in modelsToActivate:
+    model_linSignQunat_runtime = datetime.now()
     modelname = 'Linear sign quantization'
     UI.trainMessage(modelname)
     train(modelname, EPOCHS_linSignQunat, model_linSignQunat, optimizer_linSignQunat)
     model_linSignQunat_runtime = datetime.now() - model_linSignQunat_runtime
 
+
 if 'Linear uniform codebook' in modelsToActivate:
+    model_linUniformQunat_runtime = datetime.now()
     modelname = 'Linear uniform codebook'
     UI.trainMessage(modelname)
     train(modelname, EPOCHS_linUniformQunat, model_linUniformQunat, optimizer_linUniformQunat)
     # step the learning rate decay
     scheduler_linUniformQunat.step()
+    model_linUniformQunat_runtime = datetime.now() - model_linUniformQunat_runtime
 
 if 'Linear SOM learning codebook' in modelsToActivate:
+    model_linSOMQuant_runtime = datetime.now()
     modelname = 'Linear SOM learning codebook'
     UI.trainMessage(modelname)
     model_SOM = trainSOM(modelname, EPOCHS_linSOMQuant, S_codebook)
+    model_linSOMQuant_runtime = datetime.now() - model_linSOMQuant_runtime
 
 if 'Analog sign quantization' in modelsToActivate:
     modelname = 'Analog sign quantization'
@@ -241,18 +251,26 @@ if 'LSTM sign quantization' in modelsToActivate:
 UI.testHeding()
 if 'Linear sign quantization' in modelsToActivate:
     UI.testMessage('Linear sign quantization')
-    model_lin1_loss = test(model_lin1)
-    testLogger.logResult(QUANTIZATION_RATE, model_lin1_loss,
-                         algorithm='Linear sign quantization',
-                         runtime=model_lin1_runtime)
+    model_linSignQunat_loss = test(model_linSignQunat)
+    log.logResult(QUANTIZATION_RATE, model_linSignQunat_loss,
+                  algorithm='Linear sign quantization',
+                  runtime=model_linSignQunat_runtime)
 
 if 'Linear uniform codebook' in modelsToActivate:
     UI.testMessage('Linear uniform codebook')
     model_linUniformQunat_loss = test(model_linUniformQunat)
+    log.logResult(QUANTIZATION_RATE, model_linUniformQunat_loss,
+                  algorithm='Linear sign quantization',
+                  runtime=model_linUniformQunat_runtime)
+
 
 if 'Linear SOM learning codebook' in modelsToActivate:
     UI.testMessage('Linear SOM learning codebook')
-    test(model_SOM)
+    model_linSOMQuant_loss = test(model_SOM)
+    log.logResult(QUANTIZATION_RATE, model_linSOMQuant_loss,
+                  algorithm='Linear SOM learning codebook',
+                  runtime=model_linSOMQuant_runtime)
+
 
 if 'RNN sign quantization' in modelsToActivate:
     UI.testMessage('RNN sign quantization')
