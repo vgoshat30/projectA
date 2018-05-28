@@ -252,6 +252,7 @@ UI.testHeding()
 if 'Linear sign quantization' in modelsToActivate:
     UI.testMessage('Linear sign quantization')
     model_linSignQunat_loss = test(model_linSignQunat)
+    UI.testResults(QUANTIZATION_RATE, model_linSignQunat_loss)
     log.logResult(QUANTIZATION_RATE, model_linSignQunat_loss,
                   algorithm='Linear sign quantization',
                   runtime=model_linSignQunat_runtime)

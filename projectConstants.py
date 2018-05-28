@@ -26,7 +26,7 @@ modelsToActivate = [
 
 # ------------------------------
 # Epochs of each of the models
-EPOCHS_linSignQunat = 7
+EPOCHS_linSignQunat = DEFAULT_EPOCHS
 EPOCHS_linUniformQunat = DEFAULT_EPOCHS
 EPOCHS_linSOMQuant = DEFAULT_EPOCHS
 EPOCHS_ADSignQuant = DEFAULT_EPOCHS

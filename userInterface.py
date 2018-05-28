@@ -1,12 +1,12 @@
 def trainHeding():
     print('\n\n=========================',
-          '\n\tTRAINING...\n'
+          '\n\tTRAINING\n'
           '=========================\n\n')
 
 
 def testHeding():
     print('\n\n=========================',
-          '\n\tTESTING...\n'
+          '\n\tTESTING\n'
           '=========================\n\n')
 
 
@@ -24,7 +24,11 @@ def trainIteration(modelname, epoch, batch_idx, data, trainLoader, loss):
 
 def testMessage(model):
     horizontalLine()
-    print('\nTesting {} model:\n'.format(model))
+    print('\nTesting {} model...\n'.format(model))
+
+
+def testResults(rate, loss):
+    print('Test Results:\nRate:\t{}\tAverage Loss:\t{}\n'.format(rate, loss))
 
 
 def horizontalLine():
