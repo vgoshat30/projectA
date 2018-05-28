@@ -130,3 +130,32 @@ class LearningSOMFunction(torch.autograd.Function):
         input = ctx.saved_tensors
         grad_input = grad_output.clone()
         return grad_input, None, None
+
+# Inherit from Function
+class LearningTanhModule(Module):
+
+    def __init__(self, in_features, out_features, initCodebook):
+        super(LearningTanhModule, self).__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.weight = Parameter(torch.Tensor(2*M, 1))
+        self.reset_parameters()
+        self.initCodebook = initCodebook
+
+    def reset_parameters(self):
+        for ii in range(0,2*M):
+            self.weight(ii) = self.initCodebook(ii)
+
+    def forward(self, input):
+        ret = torch.zeros(input.size())
+        for ii in range(0,input.size(0)):
+            for jj in range(0,input.size(1)):
+                for kk in range(0,M):
+                    ret(ii,jj) += self.weight(kk*2)*torch.tanh(input(ii,jj)+ self.weight(2*kk+1))
+        return ret
+
+
+    def extra_repr(self):
+        return 'in_features={}, out_features={}'.format(
+            self.in_features, self.out_features
+        )
