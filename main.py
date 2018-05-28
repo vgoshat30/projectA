@@ -14,6 +14,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch.autograd import Variable
 import scipy.io as sio
 import numpy as np
+from datetime import datetime
 
 from dataLoader import *
 import linearModels
@@ -21,6 +22,7 @@ import RNNmodels
 from projectConstants import *
 import UniformQuantizer
 import testLogger
+import userInterface as ui
 
 
 def train(epoch, model, optimizer):
@@ -35,9 +37,7 @@ def train(epoch, model, optimizer):
         optimizer.step()
 
         if batch_idx % 10 == 0:
-            print('Epoch: {} [{}/{} ({:.0f}%)]\tLinear Loss: {:.6f}'.format(
-                epoch+1, batch_idx * len(data), len(trainLoader.dataset),
-                100. * batch_idx / len(trainLoader), loss))
+            ui.trainIteration(epoch, batch_idx, data, trainLoader, loss)
 
 
 def trainAnalogDigital(epoch, modelAnalog, modelDigital,
@@ -130,6 +130,9 @@ model_lin3 = linearModels.AnalogProcessNet()
 model_lin4 = linearModels.DigitalProcessNet()
 # model_lin5: Basic linear network with SOM learning quantization instead of sign
 model_lin5 = linearModels.SOMQuantizerNet(S_codebook)
+
+model_SOM = linearModels.UniformQuantizerNet(model_lin5.testCodebook)
+
 # model_RNN1: Basic linear network with sign activation and pre-quantization
 # RNN layer
 model_RNN1 = RNNmodels.SignQuantizerNetRNN()
@@ -166,9 +169,27 @@ def lambda_lin4(epoch): return 0.1 ** epoch
 
 scheduler_lin4 = optim.lr_scheduler.LambdaLR(optimizer_lin4, lr_lambda=lambda_lin4)
 
-whichModelToTrain = 2
 
-print('\n\nTRAINING...')
+########################################################################
+###               Training and testing all networks                  ###
+########################################################################
+
+# Only uncommented models will be trained and tested
+modelsToActivate = [
+    'Linear sign quantization',
+    # 'Linear uniform codebook',
+    # 'Linear SOM learning codebook',
+    # 'Analog sign quantization',
+    # 'RNN sign quantization',
+    # 'LSTM sign quantization'
+]
+
+# ------------------------------
+# ---       Training         ---
+# ------------------------------
+
+ui.trainHeding()
+model_lin1_runtime = 0
 for epoch in range(0, EPOCHS):
     print('\nTraining Linear sign quantization model:')
     train(epoch, model_lin1, optimizer_lin1)
