@@ -191,44 +191,58 @@ modelsToActivate = [
 ui.trainHeding()
 model_lin1_runtime = 0
 for epoch in range(0, EPOCHS):
-    print('\nTraining Linear sign quantization model:')
-    train(epoch, model_lin1, optimizer_lin1)
-    # print('\nTraining Linear uniform codebook quantization model:')
-    # train(epoch, model_lin2, optimizer_lin2)
-    # print('\nTraining Linear SOM learning codebook quantization model:')
-    # train(epoch, model_lin5, optimizer_lin5)
-    # print('\nTraining analog - sign quantization- digital model:')
-    # trainAnalogDigital(epoch, model_lin3, model_lin4, optimizer_lin3,
-    #                    optimizer_lin4, S_codebook)
-    # print('\nTraining RNN sign quantization model:')
-    # train(epoch, model_RNN1, optimizer_RNN1)
-    # print('\nTraining LSTM sign quantization model:')
-    # train(epoch, model_RNN2, optimizer_RNN2)
-    # step the learning rate decay
-    # scheduler_lin2.step()
-    # scheduler_lin3.step()
-    # scheduler_lin4.step()
+    if 'Linear sign quantization' in modelsToActivate:
+        ui.trainMessage('Linear sign quantization')
+        train(epoch, model_lin1, optimizer_lin1)
 
+    if 'Linear uniform codebook' in modelsToActivate:
+        ui.trainMessage('Linear uniform codebook')
+        train(epoch, model_lin2, optimizer_lin2)
+        # step the learning rate decay
+        scheduler_lin2.step()
 
-print('\n\n==============\nTESTING...\n==============\n\n')
-print('\nTesting Linear sign quantization model:\n')
-test(model_lin1)
-model_lin1_loss = test(model_lin1)
-print('\nRate: {:.4f}\nAverage loss: {:.4f}'.format(QUANTIZATION_RATE,
-                                                    model_lin1_loss))
-testLogger.logResult(QUANTIZATION_RATE, model_lin1_loss,
-                     algorithm='Linear sign')
-# print('=======================================================================')
-# print('\nTesting Linear uniform quantization model:')
-# model_lin2_loss = test(model_lin2)
-# print('\nTest average loss: {:.4f}\n'.format(model_lin2_loss))
-# print('=======================================================================')
-# print('\nTesting Linear SOM quantization model:')
-# model_SOM = linearModels.UniformQuantizerNet(model_lin5.testCodebook)
-# test(model_SOM)
-# print('=======================================================================')
-# print('\nTesting RNN sign quantization model:')
-# test(model_RNN1)
-# print('=======================================================================')
-# print('\nTesting LSTM sign quantization model:')
-# test(model_RNN2)
+    if 'Linear SOM learning codebook' in modelsToActivate:
+        ui.trainMessage('Linear SOM learning codebook')
+        train(epoch, model_lin5, optimizer_lin5)
+
+    if 'Analog sign quantization' in modelsToActivate:
+        ui.trainMessage('Linear SOM learning codebook')
+        trainAnalogDigital(epoch, model_lin3, model_lin4, optimizer_lin3,
+                           optimizer_lin4, S_codebook)
+        # step the learning rate decay
+        scheduler_lin4.step()
+
+    if 'RNN sign quantization' in modelsToActivate:
+        ui.trainMessage('RNN sign quantization')
+        train(epoch, model_RNN1, optimizer_RNN1)
+
+    if 'LSTM sign quantization' in modelsToActivate:
+        ui.trainMessage('LSTM sign quantization')
+        train(epoch, model_RNN2, optimizer_RNN2)
+
+# ------------------------------
+# ---        Testing         ---
+# ------------------------------
+
+ui.testHeding()
+if 'Linear sign quantization' in modelsToActivate:
+    ui.testMessage('Linear sign quantization')
+    model_lin1_loss = test(model_lin1)
+    testLogger.logResult(QUANTIZATION_RATE, model_lin1_loss,
+                         algorithm='Linear sign quantization')
+
+if 'Linear uniform codebook' in modelsToActivate:
+    ui.testMessage('Linear uniform codebook')
+    model_lin2_loss = test(model_lin2)
+
+if 'Linear SOM learning codebook' in modelsToActivate:
+    ui.testMessage('Linear SOM learning codebook')
+    test(model_SOM)
+
+if 'RNN sign quantization' in modelsToActivate:
+    ui.testMessage('RNN sign quantization')
+    test(model_RNN1)
+
+if 'LSTM sign quantization' in modelsToActivate:
+    ui.testMessage('LSTM sign quantization')
+    test(model_RNN2)
