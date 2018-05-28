@@ -16,12 +16,13 @@ CODEBOOK_LR = 0.1
 
 # Only uncommented models will be trained and tested
 modelsToActivate = [
-    'Linear sign quantization',
+    # 'Linear sign quantization',
     # 'Linear uniform codebook',
     #'Linear SOM learning codebook',
     # 'Analog sign quantization',
     # 'RNN sign quantization',
-    # 'LSTM sign quantization'
+    # 'LSTM sign quantization',
+    'Tanh quantization'
 ]
 
 # ------------------------------
@@ -32,3 +33,4 @@ EPOCHS_linSOMQuant = DEFAULT_EPOCHS
 EPOCHS_ADSignQuant = DEFAULT_EPOCHS
 EPOCHS_rnnSignQuant = DEFAULT_EPOCHS
 EPOCHS_lstmSignQuant = DEFAULT_EPOCHS
+EPOCHS_tanhQuantize = DEFAULT_EPOCHS

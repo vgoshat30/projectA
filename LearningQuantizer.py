@@ -8,6 +8,8 @@ import numpy as np
 from torch.autograd import Variable
 
 # Inherit from Function
+
+
 class signActivation(torch.autograd.Function):
     # Note that both forward and backward are @staticmethods
     @staticmethod
@@ -22,7 +24,6 @@ class signActivation(torch.autograd.Function):
         input = ctx.saved_tensors
         grad_input = grad_output.clone()
         return grad_input
-
 
 
 # Inherit from Function
@@ -71,10 +72,6 @@ class QuantizationFunction(torch.autograd.Function):
         return grad_input, None
 
 
-
-
-
-
 # Inherit from Function
 class LearningSOMFunction(torch.autograd.Function):
     """Applies a quantization process to the incoming scalar data using SOM
@@ -119,7 +116,8 @@ class LearningSOMFunction(torch.autograd.Function):
                 itrVal, quantized_idx = UniformQuantizer.get_optimal_word(
                     input_numpy[ii, jj], tuple(retcodebook))
                 # update winner codeword
-                retcodebook[quantized_idx] = retcodebook[quantized_idx] + CODEBOOK_LR*(input_numpy[ii, jj] - itrVal)
+                retcodebook[quantized_idx] = retcodebook[quantized_idx] + \
+                    CODEBOOK_LR*(input_numpy[ii, jj] - itrVal)
         retcodebook = torch.from_numpy(np.asarray(retcodebook))
         retcodebook = Variable(retcodebook.float())
         return qunatized_input, retcodebook
@@ -132,28 +130,31 @@ class LearningSOMFunction(torch.autograd.Function):
         return grad_input, None, None
 
 # Inherit from Function
+
+
 class LearningTanhModule(Module):
 
-    def __init__(self, in_features, out_features, initCodebook):
+    def __init__(self, in_features, out_features):
         super(LearningTanhModule, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.weight = Parameter(torch.Tensor(2*M, 1))
         self.reset_parameters()
-        self.initCodebook = initCodebook
 
     def reset_parameters(self):
-        for ii in range(0,2*M):
-            self.weight(ii) = self.initCodebook(ii)
+        stdv = 1. / math.sqrt(self.weight.size(1))
+        self.weight.data.uniform_(-stdv, stdv)
 
     def forward(self, input):
-        ret = torch.zeros(input.size())
-        for ii in range(0,input.size(0)):
-            for jj in range(0,input.size(1)):
-                for kk in range(0,M):
-                    ret(ii,jj) += self.weight(kk*2)*torch.tanh(input(ii,jj)+ self.weight(2*kk+1))
-        return ret
+        ret = torch.zeros(self.in_features, 1)
+        for ii in range(0, self.in_features):
+            print('=={0}=='.format(ii))
+            for kk in range(0, M):
 
+                print(kk)
+                ret[ii, 0] += self.weight[kk*2, 0] * \
+                    torch.tanh(input[ii, 0] + self.weight[2*kk+1, 0])
+        return ret
 
     def extra_repr(self):
         return 'in_features={}, out_features={}'.format(

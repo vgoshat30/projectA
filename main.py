@@ -151,6 +151,8 @@ model_linAnalogSign = linearModels.AnalogProcessNet()
 # model_linDigitalSign: Basic linear network which learns to perform the digital
 # processing after the quantization and results the channel coefficients
 model_linDigitalSign = linearModels.DigitalProcessNet()
+# Replacing quantizer with sum of tanh function for the learning:
+model_tanhQuantize = linearModels.tanhQuantizeNet()
 
 
 # model_rnnSignQuant: Basic linear network with sign activation and pre-quantization
@@ -168,6 +170,7 @@ optimizer_linAnalogSign = optim.SGD(model_linAnalogSign.parameters(), lr=0.01, m
 optimizer_linDigitalSign = optim.SGD(model_linDigitalSign.parameters(), lr=0.01, momentum=0.5)
 optimizer_rnnSignQuant = optim.SGD(model_rnnSignQuant.parameters(), lr=0.01, momentum=0.5)
 optimizer_lstmSignQuant = optim.SGD(model_lstmSignQuant.parameters(), lr=0.01, momentum=0.5)
+optimizer_tanhQuantize = optim.SGD(model_tanhQuantize.parameters(), lr=0.01, momentum=0.5)
 
 
 # responsible for the learning rate decay
@@ -243,6 +246,11 @@ if 'LSTM sign quantization' in modelsToActivate:
     modelname = 'LSTM sign quantization'
     UI.trainMessage(modelname)
     train(modelname, EPOCHS_lstmSignQuant, model_lstmSignQuant, optimizer_lstmSignQuant)
+
+if 'Tanh quantization' in modelsToActivate:
+    modelname = 'Tanh quantization'
+    UI.trainMessage(modelname)
+    train(modelname, EPOCHS_tanhQuantize, model_tanhQuantize, optimizer_tanhQuantize)
 
 # ------------------------------
 # ---        Testing         ---

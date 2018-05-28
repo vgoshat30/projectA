@@ -128,3 +128,25 @@ class DigitalProcessNet(nn.Module):
         x = self.l3(x)
         x = self.l4(x)
         return self.l5(x)
+
+
+class tanhQuantizeNet(nn.Module):
+
+    def __init__(self):
+        super(tanhQuantizeNet, self).__init__()
+        self.l1 = nn.Linear(INPUT_DIMENSION, 520)
+        # See Hardware-Limited Task-Based Quantization Proposion 3. for the
+        # choice of output features
+        self.l2 = nn.Linear(520, OUTPUT_DIMENSION)
+        self.l3 = nn.Linear(OUTPUT_DIMENSION, 240)
+        self.l4 = nn.Linear(240, 120)
+        self.l5 = nn.Linear(120, OUTPUT_DIMENSION)
+        self.q1 = LearningQuantizer.LearningTanhModule(OUTPUT_DIMENSION, OUTPUT_DIMENSION)
+
+    def forward(self, x):
+        x = self.l1(x)
+        x = self.l2(x)
+        x = self.q1(x)
+        x = self.l3(x)
+        x = self.l4(x)
+        return self.l5(x)
