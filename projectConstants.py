@@ -16,10 +16,10 @@ CODEBOOK_LR = 0.01
 
 # Only uncommented models will be trained and tested
 modelsToActivate = [
-    # 'Linear sign quantization',
+    'Linear sign quantization',
     # 'Linear uniform codebook',
     # 'Linear SOM learning codebook',
-    'Analog sign quantization',
+    # 'Analog sign quantization',
     # 'RNN sign quantization',
     # 'LSTM sign quantization'
 ]

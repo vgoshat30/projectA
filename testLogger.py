@@ -158,6 +158,10 @@ def logResult(rate, error, *handleMethod, **kwargs):
 
                 The runtime of the algorithm. Accepts only timedelta types of
                 the datetime packege
+
+            epochs
+
+                Specify number of training epochs
     '''
 
     def pick_handler(event):
@@ -224,6 +228,7 @@ def logResult(rate, error, *handleMethod, **kwargs):
     runTimeResults = theoryBounds['runTime']
     timeResults = theoryBounds['time']
     algorithmName = theoryBounds['algorithmName']
+    trainEpochs = theoryBounds['trainEpochs']
 
     # Create fill vectors
     xFill = np.concatenate((v_fRate[0], np.flip(v_fRate[0], 0)), axis=0)
@@ -234,6 +239,7 @@ def logResult(rate, error, *handleMethod, **kwargs):
     algToSave = np.append(algorithmName, '')
     timeToSave = np.append(timeResults, np.array(str(datetime.now())))
     runTimeToSave = np.append(runTimeResults, '')
+    epochsToSave = np.append(trainEpochs, np.empty((1, 1), float))
     for key in kwargs:
         # Check if an algorithm name provided
         if key is 'algorithm':
@@ -241,6 +247,8 @@ def logResult(rate, error, *handleMethod, **kwargs):
         # Check if runtime provided
         if key is 'runtime':
             runTimeToSave[-1] = str(kwargs[key])
+        if key is 'epochs':
+            epochsToSave[-1] = kwargs[key]
 
     if not(('dontsave' in handleMethod)):
         # Append the results to the mat file
@@ -252,7 +260,8 @@ def logResult(rate, error, *handleMethod, **kwargs):
                                                             np.array(error)),
                                   'time': timeToSave,
                                   'algorithmName': algToSave,
-                                  'runTime': runTimeToSave})
+                                  'runTime': runTimeToSave,
+                                  'trainEpochs': epochsToSave})
         print('Saved result of test number', rateResults.shape[1]+1)
 
     # Display the results in respect to the theoretical bounds
@@ -302,7 +311,9 @@ def logResult(rate, error, *handleMethod, **kwargs):
             # Create all textboxes and dont display them
             textBoxes.append(dict(boxstyle='round', facecolor='wheat',
                                   alpha=0))
+
             # Create all data tooltip and dont display them
+
             currIterDateTime = datetime.strptime(timeToSave[ii],
                                                  '%Y-%m-%d %H:%M:%S.%f')
             if runTimeToSave[ii]:
@@ -429,6 +440,7 @@ def deleteResult(*args, **kwargs):
     runTimeResults = theoryBounds['runTime']
     timeResults = theoryBounds['time']
     algorithmName = theoryBounds['algorithmName']
+    trainEpochs = theoryBounds['trainEpochs']
 
     for key in kwargs:
         if key is 'index':
@@ -437,6 +449,7 @@ def deleteResult(*args, **kwargs):
             runTimeResults = np.delete(runTimeResults, kwargs[key])
             timeResults = np.delete(timeResults, kwargs[key])
             algorithmName = np.delete(algorithmName, kwargs[key])
+            trainEpochs = np.delete(trainEpochs, kwargs[key])
 
     if 'clear' in args:
         rateResults = np.empty((0, 1), float)
@@ -444,6 +457,7 @@ def deleteResult(*args, **kwargs):
         runTimeResults = np.empty((0, 1), object)
         timeResults = ''
         algorithmName = np.empty((0, 1), object)
+        trainEpochs = np.empty((0, 1), float)
 
     # Save data back to mat file
     sio.savemat(matFileName, {'m_fCurves': m_fCurves,
@@ -452,4 +466,5 @@ def deleteResult(*args, **kwargs):
                               'errorResults': errorResults,
                               'time': timeResults,
                               'algorithmName': algorithmName,
-                              'runTime': runTimeResults})
+                              'runTime': runTimeResults,
+                              'trainEpochs': trainEpochs})
