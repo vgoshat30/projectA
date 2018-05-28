@@ -22,7 +22,7 @@ import RNNmodels
 from projectConstants import *
 import UniformQuantizer
 import testLogger
-import userInterface as ui
+import userInterface as UI
 
 
 def train(epoch, model, optimizer):
@@ -37,7 +37,7 @@ def train(epoch, model, optimizer):
         optimizer.step()
 
         if batch_idx % 10 == 0:
-            ui.trainIteration(epoch, batch_idx, data, trainLoader, loss)
+            UI.trainIteration(epoch, batch_idx, data, trainLoader, loss)
 
 
 def trainAnalogDigital(epoch, modelAnalog, modelDigital,
@@ -131,7 +131,6 @@ model_lin4 = linearModels.DigitalProcessNet()
 # model_lin5: Basic linear network with SOM learning quantization instead of sign
 model_lin5 = linearModels.SOMQuantizerNet(S_codebook)
 
-model_SOM = linearModels.UniformQuantizerNet(model_lin5.testCodebook)
 
 # model_RNN1: Basic linear network with sign activation and pre-quantization
 # RNN layer
@@ -188,61 +187,62 @@ modelsToActivate = [
 # ---       Training         ---
 # ------------------------------
 
-ui.trainHeding()
+UI.trainHeding()
 model_lin1_runtime = 0
 for epoch in range(0, EPOCHS):
     if 'Linear sign quantization' in modelsToActivate:
-        ui.trainMessage('Linear sign quantization')
+        UI.trainMessage('Linear sign quantization')
         train(epoch, model_lin1, optimizer_lin1)
 
     if 'Linear uniform codebook' in modelsToActivate:
-        ui.trainMessage('Linear uniform codebook')
+        UI.trainMessage('Linear uniform codebook')
         train(epoch, model_lin2, optimizer_lin2)
         # step the learning rate decay
         scheduler_lin2.step()
 
     if 'Linear SOM learning codebook' in modelsToActivate:
-        ui.trainMessage('Linear SOM learning codebook')
+        UI.trainMessage('Linear SOM learning codebook')
         train(epoch, model_lin5, optimizer_lin5)
+        model_SOM = linearModels.UniformQuantizerNet(model_lin5.testCodebook)
 
     if 'Analog sign quantization' in modelsToActivate:
-        ui.trainMessage('Linear SOM learning codebook')
+        UI.trainMessage('Analog sign quantization')
         trainAnalogDigital(epoch, model_lin3, model_lin4, optimizer_lin3,
                            optimizer_lin4, S_codebook)
         # step the learning rate decay
         scheduler_lin4.step()
 
     if 'RNN sign quantization' in modelsToActivate:
-        ui.trainMessage('RNN sign quantization')
+        UI.trainMessage('RNN sign quantization')
         train(epoch, model_RNN1, optimizer_RNN1)
 
     if 'LSTM sign quantization' in modelsToActivate:
-        ui.trainMessage('LSTM sign quantization')
+        UI.trainMessage('LSTM sign quantization')
         train(epoch, model_RNN2, optimizer_RNN2)
 
 # ------------------------------
 # ---        Testing         ---
 # ------------------------------
 
-ui.testHeding()
+UI.testHeding()
 if 'Linear sign quantization' in modelsToActivate:
-    ui.testMessage('Linear sign quantization')
+    UI.testMessage('Linear sign quantization')
     model_lin1_loss = test(model_lin1)
     testLogger.logResult(QUANTIZATION_RATE, model_lin1_loss,
                          algorithm='Linear sign quantization')
 
 if 'Linear uniform codebook' in modelsToActivate:
-    ui.testMessage('Linear uniform codebook')
+    UI.testMessage('Linear uniform codebook')
     model_lin2_loss = test(model_lin2)
 
 if 'Linear SOM learning codebook' in modelsToActivate:
-    ui.testMessage('Linear SOM learning codebook')
+    UI.testMessage('Linear SOM learning codebook')
     test(model_SOM)
 
 if 'RNN sign quantization' in modelsToActivate:
-    ui.testMessage('RNN sign quantization')
+    UI.testMessage('RNN sign quantization')
     test(model_RNN1)
 
 if 'LSTM sign quantization' in modelsToActivate:
-    ui.testMessage('LSTM sign quantization')
+    UI.testMessage('LSTM sign quantization')
     test(model_RNN2)
