@@ -146,14 +146,12 @@ class LearningTanhModule(Module):
         self.weight.data.uniform_(-stdv, stdv)
 
     def forward(self, input):
-        ret = torch.zeros(self.in_features, 1)
-        for ii in range(0, self.in_features):
-            print('=={0}=='.format(ii))
-            for kk in range(0, M):
-
-                print(kk)
-                ret[ii, 0] += self.weight[kk*2, 0] * \
-                    torch.tanh(input[ii, 0] + self.weight[2*kk+1, 0])
+        ret = torch.zeros(input.size())
+        for ii in range(0, input.size(0)):
+            for jj in range(0, input.size(1)):
+                for kk in range(0, M):
+                    ret[ii, jj] += self.weight[kk*2, 0] * \
+                        torch.tanh(input[ii, jj] + self.weight[2*kk+1, 0])
         return ret
 
     def extra_repr(self):

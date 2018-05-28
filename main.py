@@ -250,7 +250,9 @@ if 'LSTM sign quantization' in modelsToActivate:
 if 'Tanh quantization' in modelsToActivate:
     modelname = 'Tanh quantization'
     UI.trainMessage(modelname)
+    model_linUniformQunat_runtime = datetime.now()
     train(modelname, EPOCHS_tanhQuantize, model_tanhQuantize, optimizer_tanhQuantize)
+    model_tanhQuantize_runtime = datetime.now() - model_linUniformQunat_runtime
 
 # ------------------------------
 # ---        Testing         ---
@@ -258,26 +260,29 @@ if 'Tanh quantization' in modelsToActivate:
 
 UI.testHeding()
 if 'Linear sign quantization' in modelsToActivate:
-    UI.testMessage('Linear sign quantization')
+    modelname = 'Linear sign quantization'
+    UI.testMessage()
     model_linSignQunat_loss = test(model_linSignQunat)
     UI.testResults(QUANTIZATION_RATE, model_linSignQunat_loss)
     log.logResult(QUANTIZATION_RATE, model_linSignQunat_loss,
-                  algorithm='Linear sign quantization',
+                  algorithm=modelname,
                   runtime=model_linSignQunat_runtime)
 
 if 'Linear uniform codebook' in modelsToActivate:
-    UI.testMessage('Linear uniform codebook')
+    modelname = 'Linear uniform codebook'
+    UI.testMessage(modelname)
     model_linUniformQunat_loss = test(model_linUniformQunat)
     log.logResult(QUANTIZATION_RATE, model_linUniformQunat_loss,
-                  algorithm='Linear sign quantization',
+                  algorithm=modelname,
                   runtime=model_linUniformQunat_runtime)
 
 
 if 'Linear SOM learning codebook' in modelsToActivate:
-    UI.testMessage('Linear SOM learning codebook')
+    modelname = 'Linear SOM learning codebook'
+    UI.testMessage()
     model_linSOMQuant_loss = test(model_SOM)
     log.logResult(QUANTIZATION_RATE, model_linSOMQuant_loss,
-                  algorithm='Linear SOM learning codebook',
+                  algorithm=modelname,
                   runtime=model_linSOMQuant_runtime)
 
 
@@ -288,3 +293,12 @@ if 'RNN sign quantization' in modelsToActivate:
 if 'LSTM sign quantization' in modelsToActivate:
     UI.testMessage('LSTM sign quantization')
     test(model_lstmSignQuant)
+
+if 'Tanh quantization' in modelsToActivate:
+    modelname = 'Tanh quantization'
+    UI.testMessage(modelname)
+    model_tanhQuantize_loss = test(model_tanhQuantize)
+    UI.testResults(QUANTIZATION_RATE, model_tanhQuantize_loss)
+    log.logResult(QUANTIZATION_RATE, model_tanhQuantize_loss,
+                  algorithm=modelname,
+                  runtime=model_tanhQuantize_runtime)
