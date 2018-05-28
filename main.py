@@ -83,6 +83,26 @@ def trainAnalogDigital(modelname, epoch, modelAnalog, modelDigital,
                                   trainLoader, lossDigital)
 
 
+def trainSOM(modelname, epoch, initCodebook):
+
+    for batch_idx, (data, target) in enumerate(trainLoader):
+        data, target = Variable(data.float()), Variable(target.float())
+        target_numpy = target.data.numpy()
+        newCodebook = list(initCodebook)
+        for ii in range(0, target.size(0)):
+            for jj in range(0, target.size(1)):
+                itrVal, quantized_idx = UniformQuantizer.get_optimal_word(
+                    target_numpy[ii, jj], tuple(newCodebook))
+                # update winner codeword
+                newCodebook[quantized_idx] = newCodebook[quantized_idx] + CODEBOOK_LR*(target_numpy[ii, jj] - itrVal)
+        testCodebook = tuple(newCodebook)
+    SOMtestModel = linearModels.UniformQuantizerNet(testCodebook)
+    SOMtestOptim = optim.SGD(SOMtestModel.parameters(), lr=0.01, momentum=0.5)
+    train(modelname, epoch, SOMtestModel, SOMtestOptim)
+    return SOMtestModel
+
+
+
 def test(model):
     model.eval()
     test_loss = 0
@@ -121,54 +141,51 @@ testLoader = DataLoader(dataset=testData, batch_size=BATCH_SIZE, shuffle=True)
 X_codebook = UniformQuantizer.codebook_uniform(trainData.X_var, M)
 S_codebook = UniformQuantizer.codebook_uniform(trainData.S_var, M)
 # model_lin1: Basic linear network with sign activation as the quantization
-model_lin1 = linearModels.SignQuantizerNet()
-# model_lin2: Basic linear network with uniform quantization instead of sign
-model_lin2 = linearModels.UniformQuantizerNet(S_codebook)
-# model_lin3: Basic linear network which learns to prepare the analog signal
+model_linSignQunat = linearModels.SignQuantizerNet()
+# model_linUniformQunat: Basic linear network with uniform quantization instead of sign
+model_linUniformQunat = linearModels.UniformQuantizerNet(S_codebook)
+# model_linAnalogSign: Basic linear network which learns to prepare the analog signal
 # data for quantization
-model_lin3 = linearModels.AnalogProcessNet()
-# model_lin4: Basic linear network which learns to perform the digital
+model_linAnalogSign = linearModels.AnalogProcessNet()
+# model_linDigitalSign: Basic linear network which learns to perform the digital
 # processing after the quantization and results the channel coefficients
-model_lin4 = linearModels.DigitalProcessNet()
-# model_lin5: Basic linear network with SOM learning quantization instead of sign
-model_lin5 = linearModels.SOMQuantizerNet(S_codebook)
+model_linDigitalSign = linearModels.DigitalProcessNet()
 
 
-# model_RNN1: Basic linear network with sign activation and pre-quantization
+# model_rnnSignQuant: Basic linear network with sign activation and pre-quantization
 # RNN layer
-model_RNN1 = RNNmodels.SignQuantizerNetRNN()
-# model_RNN2: Basic linear network with sign activation and pre-quantization
+model_rnnSignQuant = RNNmodels.SignQuantizerNetRNN()
+# model_lstmSignQuant: Basic linear network with sign activation and pre-quantization
 # LSTM layer
-model_RNN2 = RNNmodels.SignQuantizerNetLSTM()
+model_lstmSignQuant = RNNmodels.SignQuantizerNetLSTM()
 
 
 criterion = nn.MSELoss()
-optimizer_lin1 = optim.SGD(model_lin1.parameters(), lr=0.01, momentum=0.5)
-optimizer_lin2 = optim.SGD(model_lin2.parameters(), lr=0.01, momentum=0.5)
-optimizer_lin3 = optim.SGD(model_lin3.parameters(), lr=0.01, momentum=0.5)
-optimizer_lin4 = optim.SGD(model_lin4.parameters(), lr=0.01, momentum=0.5)
-optimizer_lin5 = optim.SGD(model_lin5.parameters(), lr=0.01, momentum=0.5)
-optimizer_RNN1 = optim.SGD(model_RNN1.parameters(), lr=0.01, momentum=0.5)
-optimizer_RNN2 = optim.SGD(model_RNN2.parameters(), lr=0.01, momentum=0.5)
+optimizer_linSignQunat = optim.SGD(model_linSignQunat.parameters(), lr=0.01, momentum=0.5)
+optimizer_linUniformQunat = optim.SGD(model_linUniformQunat.parameters(), lr=0.01, momentum=0.5)
+optimizer_linAnalogSign = optim.SGD(model_linAnalogSign.parameters(), lr=0.01, momentum=0.5)
+optimizer_linDigitalSign = optim.SGD(model_linDigitalSign.parameters(), lr=0.01, momentum=0.5)
+optimizer_rnnSignQuant = optim.SGD(model_rnnSignQuant.parameters(), lr=0.01, momentum=0.5)
+optimizer_lstmSignQuant = optim.SGD(model_lstmSignQuant.parameters(), lr=0.01, momentum=0.5)
 
 
 # responsible for the learning rate decay
-def lambda_lin2(epoch): return 0.8 ** epoch
+def lambda_linUniformQunat(epoch): return 0.8 ** epoch
 
 
-scheduler_lin2 = optim.lr_scheduler.LambdaLR(optimizer_lin2, lr_lambda=lambda_lin2)
+scheduler_linUniformQunat = optim.lr_scheduler.LambdaLR(optimizer_linUniformQunat, lr_lambda=lambda_linUniformQunat)
 
 
-def lambda_lin3(epoch): return 0.1 ** epoch
+def lambda_linAnalogSign(epoch): return 0.1 ** epoch
 
 
-scheduler_lin3 = optim.lr_scheduler.LambdaLR(optimizer_lin3, lr_lambda=lambda_lin3)
+scheduler_linAnalogSign = optim.lr_scheduler.LambdaLR(optimizer_linAnalogSign, lr_lambda=lambda_linAnalogSign)
 
 
-def lambda_lin4(epoch): return 0.1 ** epoch
+def lambda_linDigitalSign(epoch): return 0.1 ** epoch
 
 
-scheduler_lin4 = optim.lr_scheduler.LambdaLR(optimizer_lin4, lr_lambda=lambda_lin4)
+scheduler_linDigitalSign = optim.lr_scheduler.LambdaLR(optimizer_linDigitalSign, lr_lambda=lambda_linDigitalSign)
 
 
 ########################################################################
@@ -180,43 +197,42 @@ scheduler_lin4 = optim.lr_scheduler.LambdaLR(optimizer_lin4, lr_lambda=lambda_li
 # ------------------------------
 
 UI.trainHeding()
-model_lin1_runtime = datetime.now()
+model_linSignQunat_runtime = datetime.now()
 if 'Linear sign quantization' in modelsToActivate:
     modelname = 'Linear sign quantization'
     UI.trainMessage(modelname)
-    train(modelname, EPOCHS_lin1, model_lin1, optimizer_lin1)
-    model_lin1_runtime = datetime.now() - model_lin1_runtime
+    train(modelname, EPOCHS_linSignQunat, model_linSignQunat, optimizer_linSignQunat)
+    model_linSignQunat_runtime = datetime.now() - model_linSignQunat_runtime
 
 if 'Linear uniform codebook' in modelsToActivate:
     modelname = 'Linear uniform codebook'
     UI.trainMessage(modelname)
-    train(modelname, EPOCHS_lin2, model_lin2, optimizer_lin2)
+    train(modelname, EPOCHS_linUniformQunat, model_linUniformQunat, optimizer_linUniformQunat)
     # step the learning rate decay
-    scheduler_lin2.step()
+    scheduler_linUniformQunat.step()
 
 if 'Linear SOM learning codebook' in modelsToActivate:
     modelname = 'Linear SOM learning codebook'
     UI.trainMessage(modelname)
-    train(modelname, EPOCHS_lin5, model_lin5, optimizer_lin5)
-    model_SOM = linearModels.UniformQuantizerNet(model_lin5.testCodebook)
+    model_SOM = trainSOM(modelname, EPOCHS_linSOMQuant, S_codebook)
 
 if 'Analog sign quantization' in modelsToActivate:
     modelname = 'Analog sign quantization'
     UI.trainMessage(modelname)
-    trainAnalogDigital(modelname, EPOCHS_lin3, model_lin3, model_lin4,
-                       optimizer_lin3, optimizer_lin4, S_codebook)
+    trainAnalogDigital(modelname, EPOCHS_ADSignQuant, model_linAnalogSign, model_linDigitalSign,
+                       optimizer_linAnalogSign, optimizer_linDigitalSign, S_codebook)
     # step the learning rate decay
-    scheduler_lin4.step()
+    scheduler_linDigitalSign.step()
 
 if 'RNN sign quantization' in modelsToActivate:
     modelname = 'RNN sign quantization'
     UI.trainMessage(modelname)
-    train(modelname, EPOCHS_RNN1, model_RNN1, optimizer_RNN1)
+    train(modelname, EPOCHS_rnnSignQuant, model_rnnSignQuant, optimizer_rnnSignQuant)
 
 if 'LSTM sign quantization' in modelsToActivate:
     modelname = 'LSTM sign quantization'
     UI.trainMessage(modelname)
-    train(modelname, EPOCHS_RNN2, model_RNN2, optimizer_RNN2)
+    train(modelname, EPOCHS_lstmSignQuant, model_lstmSignQuant, optimizer_lstmSignQuant)
 
 # ------------------------------
 # ---        Testing         ---
@@ -232,7 +248,7 @@ if 'Linear sign quantization' in modelsToActivate:
 
 if 'Linear uniform codebook' in modelsToActivate:
     UI.testMessage('Linear uniform codebook')
-    model_lin2_loss = test(model_lin2)
+    model_linUniformQunat_loss = test(model_linUniformQunat)
 
 if 'Linear SOM learning codebook' in modelsToActivate:
     UI.testMessage('Linear SOM learning codebook')
@@ -240,8 +256,8 @@ if 'Linear SOM learning codebook' in modelsToActivate:
 
 if 'RNN sign quantization' in modelsToActivate:
     UI.testMessage('RNN sign quantization')
-    test(model_RNN1)
+    test(model_rnnSignQuant)
 
 if 'LSTM sign quantization' in modelsToActivate:
     UI.testMessage('LSTM sign quantization')
-    test(model_RNN2)
+    test(model_lstmSignQuant)
