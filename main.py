@@ -25,60 +25,62 @@ import testLogger
 import userInterface as UI
 
 
-def train(epoch, model, optimizer):
-    model.train()
-    for batch_idx, (data, target) in enumerate(trainLoader):
-        data, target = Variable(data.float()), Variable(target.float())
+def train(modelname, epoch, model, optimizer):
+    for corrEpoch in range(0, epoch):
+        model.train()
+        for batch_idx, (data, target) in enumerate(trainLoader):
+            data, target = Variable(data.float()), Variable(target.float())
 
-        optimizer.zero_grad()
-        output = model(data)
-        loss = criterion(output.view(-1, 1), target.view(-1, 1))
-        loss.backward(retain_graph=True)
-        optimizer.step()
+            optimizer.zero_grad()
+            output = model(data)
+            loss = criterion(output.view(-1, 1), target.view(-1, 1))
+            loss.backward(retain_graph=True)
+            optimizer.step()
 
-        if batch_idx % 10 == 0:
-            UI.trainIteration(epoch, batch_idx, data, trainLoader, loss)
+            if batch_idx % 10 == 0:
+                UI.trainIteration(modelname, corrEpoch, batch_idx, data,
+                                  trainLoader, loss)
 
 
-def trainAnalogDigital(epoch, modelAnalog, modelDigital,
+def trainAnalogDigital(modelname, epoch, modelAnalog, modelDigital,
                        optimizerAnalog, optimizerDigital, codebook):
-    modelAnalog.train()
-    modelDigital.train()
+    for corrEpoch in range(0, epoch):
+        modelAnalog.train()
+        modelDigital.train()
 
-    # Train analog NN
-    for batch_idx, (data, target) in enumerate(trainLoader):
-        data, target = Variable(data.float()), Variable(target.float())
+        # Train analog NN
+        for batch_idx, (data, target) in enumerate(trainLoader):
+            data, target = Variable(data.float()), Variable(target.float())
 
-        optimizerAnalog.zero_grad()
-        output = modelAnalog(data)
-        lossAnalog = criterion(output.view(-1, 1), target.view(-1, 1))
-        lossAnalog.backward(retain_graph=True)
-        optimizerAnalog.step()
+            optimizerAnalog.zero_grad()
+            output = modelAnalog(data)
+            lossAnalog = criterion(output.view(-1, 1), target.view(-1, 1))
+            lossAnalog.backward(retain_graph=True)
+            optimizerAnalog.step()
 
-        if batch_idx % 10 == 0:
-            print('Analog: Epoch: {} [{}/{} ({:.0f}%)]\tLinear Loss: {:.6f}'.format(
-                epoch+1, batch_idx * len(data), len(trainLoader.dataset),
-                100. * batch_idx / len(trainLoader), lossAnalog))
+            if batch_idx % 10 == 0:
+                UI.trainIteration('Analog', corrEpoch, batch_idx, data,
+                                  trainLoader, lossAnalog)
 
     modelAnalog.eval()
     # Train digital NN
-    for batch_idx, (data, target) in enumerate(trainLoader):
+    for corrEpoch in range(0, epoch):
+        for batch_idx, (data, target) in enumerate(trainLoader):
 
-        target = Variable(target.float())
+            target = Variable(target.float())
 
-        analogProcessData = modelAnalog(data.float())
-        quantizedData = Variable(justQuantize(analogProcessData, codebook))
+            analogProcessData = modelAnalog(data.float())
+            quantizedData = Variable(justQuantize(analogProcessData, codebook))
 
-        optimizerDigital.zero_grad()
-        output = modelDigital(quantizedData)
-        lossDigital = criterion(output.view(-1, 1), target.view(-1, 1))
-        lossDigital.backward(retain_graph=True)
-        optimizerDigital.step()
+            optimizerDigital.zero_grad()
+            output = modelDigital(quantizedData)
+            lossDigital = criterion(output.view(-1, 1), target.view(-1, 1))
+            lossDigital.backward(retain_graph=True)
+            optimizerDigital.step()
 
-        if batch_idx % 10 == 0:
-            print('Digital: Epoch: {} [{}/{} ({:.0f}%)]\tLinear Loss: {:.6f}'.format(
-                epoch+1, batch_idx * len(data), len(trainLoader.dataset),
-                100. * batch_idx / len(trainLoader), lossDigital))
+            if batch_idx % 10 == 0:
+                UI.trainIteration('Digital', corrEpoch, batch_idx, data,
+                                  trainLoader, lossDigital)
 
 
 def test(model):
@@ -173,52 +175,48 @@ scheduler_lin4 = optim.lr_scheduler.LambdaLR(optimizer_lin4, lr_lambda=lambda_li
 ###               Training and testing all networks                  ###
 ########################################################################
 
-# Only uncommented models will be trained and tested
-modelsToActivate = [
-    'Linear sign quantization',
-    # 'Linear uniform codebook',
-    # 'Linear SOM learning codebook',
-    # 'Analog sign quantization',
-    # 'RNN sign quantization',
-    # 'LSTM sign quantization'
-]
-
 # ------------------------------
 # ---       Training         ---
 # ------------------------------
 
 UI.trainHeding()
-model_lin1_runtime = 0
-for epoch in range(0, EPOCHS):
-    if 'Linear sign quantization' in modelsToActivate:
-        UI.trainMessage('Linear sign quantization')
-        train(epoch, model_lin1, optimizer_lin1)
+model_lin1_runtime = datetime.now()
+if 'Linear sign quantization' in modelsToActivate:
+    modelname = 'Linear sign quantization'
+    UI.trainMessage(modelname)
+    train(modelname, EPOCHS_lin1, model_lin1, optimizer_lin1)
+    model_lin1_runtime = datetime.now() - model_lin1_runtime
 
-    if 'Linear uniform codebook' in modelsToActivate:
-        UI.trainMessage('Linear uniform codebook')
-        train(epoch, model_lin2, optimizer_lin2)
-        # step the learning rate decay
-        scheduler_lin2.step()
+if 'Linear uniform codebook' in modelsToActivate:
+    modelname = 'Linear uniform codebook'
+    UI.trainMessage(modelname)
+    train(modelname, EPOCHS_lin2, model_lin2, optimizer_lin2)
+    # step the learning rate decay
+    scheduler_lin2.step()
 
-    if 'Linear SOM learning codebook' in modelsToActivate:
-        UI.trainMessage('Linear SOM learning codebook')
-        train(epoch, model_lin5, optimizer_lin5)
-        model_SOM = linearModels.UniformQuantizerNet(model_lin5.testCodebook)
+if 'Linear SOM learning codebook' in modelsToActivate:
+    modelname = 'Linear SOM learning codebook'
+    UI.trainMessage(modelname)
+    train(modelname, EPOCHS_lin5, model_lin5, optimizer_lin5)
+    model_SOM = linearModels.UniformQuantizerNet(model_lin5.testCodebook)
 
-    if 'Analog sign quantization' in modelsToActivate:
-        UI.trainMessage('Analog sign quantization')
-        trainAnalogDigital(epoch, model_lin3, model_lin4, optimizer_lin3,
-                           optimizer_lin4, S_codebook)
-        # step the learning rate decay
-        scheduler_lin4.step()
+if 'Analog sign quantization' in modelsToActivate:
+    modelname = 'Analog sign quantization'
+    UI.trainMessage(modelname)
+    trainAnalogDigital(modelname, EPOCHS_lin3, model_lin3, model_lin4,
+                       optimizer_lin3, optimizer_lin4, S_codebook)
+    # step the learning rate decay
+    scheduler_lin4.step()
 
-    if 'RNN sign quantization' in modelsToActivate:
-        UI.trainMessage('RNN sign quantization')
-        train(epoch, model_RNN1, optimizer_RNN1)
+if 'RNN sign quantization' in modelsToActivate:
+    modelname = 'RNN sign quantization'
+    UI.trainMessage(modelname)
+    train(modelname, EPOCHS_RNN1, model_RNN1, optimizer_RNN1)
 
-    if 'LSTM sign quantization' in modelsToActivate:
-        UI.trainMessage('LSTM sign quantization')
-        train(epoch, model_RNN2, optimizer_RNN2)
+if 'LSTM sign quantization' in modelsToActivate:
+    modelname = 'LSTM sign quantization'
+    UI.trainMessage(modelname)
+    train(modelname, EPOCHS_RNN2, model_RNN2, optimizer_RNN2)
 
 # ------------------------------
 # ---        Testing         ---
@@ -229,7 +227,8 @@ if 'Linear sign quantization' in modelsToActivate:
     UI.testMessage('Linear sign quantization')
     model_lin1_loss = test(model_lin1)
     testLogger.logResult(QUANTIZATION_RATE, model_lin1_loss,
-                         algorithm='Linear sign quantization')
+                         algorithm='Linear sign quantization',
+                         runtime=model_lin1_runtime)
 
 if 'Linear uniform codebook' in modelsToActivate:
     UI.testMessage('Linear uniform codebook')

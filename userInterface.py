@@ -15,9 +15,9 @@ def trainMessage(model):
     print('\nTraining {} model:\n'.format(model))
 
 
-def trainIteration(epoch, batch_idx, data, trainLoader, loss):
-    print('Epoch: {} [{}/{} ({:.0f}%)]\tLinear Loss: {:.6f}'
-          .format(epoch+1, batch_idx * len(data),
+def trainIteration(modelname, epoch, batch_idx, data, trainLoader, loss):
+    print('{}:\tEpoch: {} [{}/{} ({:.0f}%)]\tLinear Loss: {:.6f}'
+          .format(modelname, epoch+1, batch_idx * len(data),
                   len(trainLoader.dataset),
                   100. * batch_idx / len(trainLoader), loss))
 
