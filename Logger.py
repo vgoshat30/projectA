@@ -114,7 +114,7 @@ def getTextAlignment(x, y, textOffset):
     return (ha, va, xOffset, yOffset)
 
 
-def logResult(rate, error, *handleMethod, **kwargs):
+def log(rate=None, error=None, *handleMethod, **kwargs):
     '''Plot the result compares to the theory
 
         IMPORTANT!!!
@@ -127,8 +127,10 @@ def logResult(rate, error, *handleMethod, **kwargs):
         Click any datapoint to oped a tooltip with all the information available
         for it.
 
-        Parameters
-        ----------
+        Args
+        ----
+            When called with no args, plots the saved tests to a figure
+
             rate
 
                 The quantization rate of the current test
@@ -137,7 +139,8 @@ def logResult(rate, error, *handleMethod, **kwargs):
 
                 The resulting error of the current test
 
-            optional (add as a string input, PLACE BEFORE algorithm and runtime):
+            optional (add as a string input, PLACE BEFORE algorithm and runtime
+                    and after rate and error):
 
                 'dontshow'
 
@@ -147,19 +150,19 @@ def logResult(rate, error, *handleMethod, **kwargs):
 
                     Only displays results and dont save results
 
-            algorithm
+            algorithm=
 
                 Spesify a string with the name of the algorithm (preferably a
                 short one) for example:
 
                     logResult(0.3, 0.04, algorithm='Simple Linear')
 
-            runtime
+            runtime=
 
                 The runtime of the algorithm. Accepts only timedelta types of
                 the datetime packege
 
-            epochs
+            epochs=
 
                 Specify number of training epochs
     '''
@@ -229,6 +232,7 @@ def logResult(rate, error, *handleMethod, **kwargs):
     timeResults = theoryBounds['time']
     algorithmName = theoryBounds['algorithmName']
     trainEpochs = theoryBounds['trainEpochs']
+    notes = theoryBounds['notes']
 
     # Create fill vectors
     xFill = np.concatenate((v_fRate[0], np.flip(v_fRate[0], 0)), axis=0)
@@ -240,6 +244,7 @@ def logResult(rate, error, *handleMethod, **kwargs):
     timeToSave = np.append(timeResults, np.array(str(datetime.now())))
     runTimeToSave = np.append(runTimeResults, '')
     epochsToSave = np.append(trainEpochs, np.empty((1, 1), float))
+    notesToSave = np.append(notes, '')
     for key in kwargs:
         # Check if an algorithm name provided
         if key is 'algorithm':
@@ -249,8 +254,10 @@ def logResult(rate, error, *handleMethod, **kwargs):
             runTimeToSave[-1] = str(kwargs[key])
         if key is 'epochs':
             epochsToSave[-1] = kwargs[key]
+        if key is 'note':
+            notesToSave[-1] = kwargs[key]
 
-    if not(('dontsave' in handleMethod)):
+    if not(('dontsave' in handleMethod)) and not(rate is None) and not(error is None):
         # Append the results to the mat file
         sio.savemat(matFileName, {'m_fCurves': m_fCurves,
                                   'v_fRate': v_fRate,
@@ -261,7 +268,8 @@ def logResult(rate, error, *handleMethod, **kwargs):
                                   'time': timeToSave,
                                   'algorithmName': algToSave,
                                   'runTime': runTimeToSave,
-                                  'trainEpochs': epochsToSave})
+                                  'trainEpochs': epochsToSave,
+                                  'notes': notesToSave})
         print('Saved result of test number', rateResults.shape[1]+1)
 
     # Display the results in respect to the theoretical bounds
@@ -294,9 +302,10 @@ def logResult(rate, error, *handleMethod, **kwargs):
                           color=pointsColor, picker=5)
 
         # Plot result
-        resList += ax.plot(rate, error, marker='x',
-                           markersize=regMarkerSize, color=pointsColor,
-                           label='Results', picker=5)
+        if not((rate is None)) and not((error is None)):
+            resList += ax.plot(rate, error, marker='x',
+                               markersize=regMarkerSize, color=pointsColor,
+                               label='Results', picker=5)
 
         indexText = []
         datatips = []
@@ -354,56 +363,57 @@ def logResult(rate, error, *handleMethod, **kwargs):
                                     bbox=textBoxes[ii],
                                     ha=textAlign[0], va=textAlign[1]))
 
-        # Last result index text
-        lastResultIndex = rateResults.shape[1]
-        indexText.append(ax.text(*reandomTickPos(rate, error),
-                                 lastResultIndex+1,
-                                 fontsize=8, alpha=indexAlpha,
-                                 verticalalignment='center',
-                                 horizontalalignment='center'))
-        # CLast textbox
-        textBoxes.append(dict(boxstyle='round', facecolor='wheat',
-                              alpha=0))
-        currIterDateTime = datetime.strptime(timeToSave[-1],
-                                             '%Y-%m-%d %H:%M:%S.%f')
-        if runTimeToSave[-1]:
-            currRuntime = datetime.strptime(removeCellFormat(runTimeToSave[-1]),
-                                            '%H:%M:%S.%f')
-        # Last result datatip
-        if algToSave[-1] and runTimeToSave[-1]:
-            textToDisplay = 'Rate: ' + str(rate) + \
-                '\nAvg. Distortion: ' + str(error) + \
-                '\nAlgorithm:\n' + removeCellFormat(algToSave[-1]) + \
-                '\nRuntime: ' + currRuntime.strftime('%H:%M:%S.%f') + \
-                '\nDate: ' + currIterDateTime.strftime('%d/%m/%y') + \
-                '\nTime: ' + currIterDateTime.strftime('%H:%M:%S')
-        elif algToSave[-1] and not(runTimeToSave[-1]):
-            textToDisplay = 'Rate: ' + str(rate) + \
-                '\nAvg. Distortion: ' + str(error) + \
-                '\nAlgorithm:\n' + removeCellFormat(algToSave[-1]) + \
-                '\nDate: ' + currIterDateTime.strftime('%d/%m/%y') + \
-                '\nTime: ' + currIterDateTime.strftime('%H:%M:%S')
-        elif not(algToSave[-1]) and runTimeToSave[-1]:
-            textToDisplay = 'Rate: ' + str(rate) + \
-                '\nAvg. Distortion: ' + str(error) + \
-                '\nRuntime: ' + currRuntime.strftime('%H:%M:%S.%f') + \
-                '\nDate: ' + datetime.now().strftime('%d/%m/%y') + \
-                '\nTime: ' + datetime.now().strftime('%H:%M:%S')
-        else:
-            textToDisplay = 'Rate: ' + str(rate) + \
-                '\nAve. Distortion: ' + str(error) + \
-                '\nDate: ' + datetime.now().strftime('%d/%m/%y') + \
-                '\nTime: ' + datetime.now().strftime('%H:%M:%S')
-        textAlign = getTextAlignment(resList[lastResultIndex].get_xdata(),
-                                     resList[lastResultIndex].get_ydata(),
-                                     textOffset)
-        datatips.append(ax.text(resList[lastResultIndex].get_xdata() +
-                                textAlign[2],
-                                resList[lastResultIndex].get_ydata() +
-                                textAlign[3], textToDisplay,
-                                alpha=0, fontsize=dataTipFontsize,
-                                bbox=textBoxes[lastResultIndex],
-                                ha=textAlign[0], va=textAlign[1]))
+        if not((rate is None)) and not((error is None)):
+            # Last result index text
+            lastResultIndex = rateResults.shape[1]
+            indexText.append(ax.text(*reandomTickPos(rate, error),
+                                     lastResultIndex+1,
+                                     fontsize=8, alpha=indexAlpha,
+                                     verticalalignment='center',
+                                     horizontalalignment='center'))
+            # Last textbox
+            textBoxes.append(dict(boxstyle='round', facecolor='wheat',
+                                  alpha=0))
+            currIterDateTime = datetime.strptime(timeToSave[-1],
+                                                 '%Y-%m-%d %H:%M:%S.%f')
+            if runTimeToSave[-1]:
+                currRuntime = datetime.strptime(removeCellFormat(runTimeToSave[-1]),
+                                                '%H:%M:%S.%f')
+            # Last result datatip
+            if algToSave[-1] and runTimeToSave[-1]:
+                textToDisplay = 'Rate: ' + str(rate) + \
+                    '\nAvg. Distortion: ' + str(error) + \
+                    '\nAlgorithm:\n' + removeCellFormat(algToSave[-1]) + \
+                    '\nRuntime: ' + currRuntime.strftime('%H:%M:%S.%f') + \
+                    '\nDate: ' + currIterDateTime.strftime('%d/%m/%y') + \
+                    '\nTime: ' + currIterDateTime.strftime('%H:%M:%S')
+            elif algToSave[-1] and not(runTimeToSave[-1]):
+                textToDisplay = 'Rate: ' + str(rate) + \
+                    '\nAvg. Distortion: ' + str(error) + \
+                    '\nAlgorithm:\n' + removeCellFormat(algToSave[-1]) + \
+                    '\nDate: ' + currIterDateTime.strftime('%d/%m/%y') + \
+                    '\nTime: ' + currIterDateTime.strftime('%H:%M:%S')
+            elif not(algToSave[-1]) and runTimeToSave[-1]:
+                textToDisplay = 'Rate: ' + str(rate) + \
+                    '\nAvg. Distortion: ' + str(error) + \
+                    '\nRuntime: ' + currRuntime.strftime('%H:%M:%S.%f') + \
+                    '\nDate: ' + datetime.now().strftime('%d/%m/%y') + \
+                    '\nTime: ' + datetime.now().strftime('%H:%M:%S')
+            else:
+                textToDisplay = 'Rate: ' + str(rate) + \
+                    '\nAve. Distortion: ' + str(error) + \
+                    '\nDate: ' + datetime.now().strftime('%d/%m/%y') + \
+                    '\nTime: ' + datetime.now().strftime('%H:%M:%S')
+            textAlign = getTextAlignment(resList[lastResultIndex].get_xdata(),
+                                         resList[lastResultIndex].get_ydata(),
+                                         textOffset)
+            datatips.append(ax.text(resList[lastResultIndex].get_xdata() +
+                                    textAlign[2],
+                                    resList[lastResultIndex].get_ydata() +
+                                    textAlign[3], textToDisplay,
+                                    alpha=0, fontsize=dataTipFontsize,
+                                    bbox=textBoxes[lastResultIndex],
+                                    ha=textAlign[0], va=textAlign[1]))
 
         # Labeling and graph appearance
         plt.xlabel('Rate', fontsize=18, fontname='Times New Roman')
@@ -414,7 +424,7 @@ def logResult(rate, error, *handleMethod, **kwargs):
         plt.show()
 
 
-def deleteResult(*args, **kwargs):
+def delete(*args, **kwargs):
     '''Delete all or part of the data log
 
         Parameters
@@ -424,10 +434,13 @@ def deleteResult(*args, **kwargs):
                 'clear'
                     Reaets all the log
 
-            index
+            testindex=
                 Specify index of test to delete. For example:
-                    deleteResult(index=1)
-                deletes the second test
+                    deleteResult(test=1)
+                deletes the SECOND test
+                Accepts tuples also:
+                    deleteResult(index=(2, 4, 5))
+                deletes third, fifth and sixth tests
     '''
     # Load data from file
     theoryBounds = sio.loadmat(matFileName)
@@ -441,23 +454,26 @@ def deleteResult(*args, **kwargs):
     timeResults = theoryBounds['time']
     algorithmName = theoryBounds['algorithmName']
     trainEpochs = theoryBounds['trainEpochs']
+    notes = theoryBounds['notes']
 
     for key in kwargs:
-        if key is 'index':
-            rateResults = np.delete(rateResults, kwargs[key])
-            errorResults = np.delete(errorResults, kwargs[key])
-            runTimeResults = np.delete(runTimeResults, kwargs[key])
+        if key is 'testindex':
+            rateResults = np.delete(rateResults, kwargs[key], 1)
+            errorResults = np.delete(errorResults, kwargs[key], 1)
+            runTimeResults = np.delete(runTimeResults, kwargs[key], 1)
             timeResults = np.delete(timeResults, kwargs[key])
-            algorithmName = np.delete(algorithmName, kwargs[key])
-            trainEpochs = np.delete(trainEpochs, kwargs[key])
+            algorithmName = np.delete(algorithmName, kwargs[key], 1)
+            trainEpochs = np.delete(trainEpochs, kwargs[key], 1)
+            notes = np.delete(notes, kwargs[key], 1)
 
     if 'clear' in args:
-        rateResults = np.empty((0, 1), float)
-        errorResults = np.empty((0, 1), float)
-        runTimeResults = np.empty((0, 1), object)
-        timeResults = ''
-        algorithmName = np.empty((0, 1), object)
-        trainEpochs = np.empty((0, 1), float)
+        rateResults = np.empty((0, 1), float)  # MATLAB Array of doubles
+        errorResults = np.empty((0, 1), float)  # MATLAB Array of doubles
+        runTimeResults = np.empty((0, 1), object)  # MATLAB Cell
+        timeResults = ''  # MATLAB Char array
+        algorithmName = np.empty((0, 1), object)  # MATLAB Cell
+        trainEpochs = np.empty((0, 1), float)  # MATLAB Array of doubles
+        notes = np.empty((0, 1), object)  # MATLAB Cell
 
     # Save data back to mat file
     sio.savemat(matFileName, {'m_fCurves': m_fCurves,
@@ -467,4 +483,132 @@ def deleteResult(*args, **kwargs):
                               'time': timeResults,
                               'algorithmName': algorithmName,
                               'runTime': runTimeResults,
-                              'trainEpochs': trainEpochs})
+                              'trainEpochs': trainEpochs,
+                              'notes': notes})
+
+
+def edit(test, **kwargs):
+    '''Edit test log
+
+        Parameters
+        ----------
+            test
+                Number of test to edit
+
+            Optional:
+
+                algorithm=
+                    Change algorithm name
+
+                epochs=
+                    Change train epochs number
+
+                note=
+                    Change the note for this test
+    '''
+    # Load data from file
+    theoryBounds = sio.loadmat(matFileName)
+
+    # Get x (rate) vector and y (errors) matrix and previous results rate and errors
+    m_fCurves = theoryBounds['m_fCurves']
+    v_fRate = theoryBounds['v_fRate']
+    rateResults = theoryBounds['rateResults']
+    errorResults = theoryBounds['errorResults']
+    runTimeResults = theoryBounds['runTime']
+    timeResults = theoryBounds['time']
+    algorithmName = theoryBounds['algorithmName']
+    trainEpochs = theoryBounds['trainEpochs']
+    notes = theoryBounds['notes']
+
+    for key in kwargs:
+        if key is 'algorithm':
+            algorithmName[0, test-1] = kwargs[key]
+
+        if key is 'epochs':
+            trainEpochs[0, test-1] = kwargs[key]
+
+        if key is 'note':
+            notes[0, test-1] = kwargs[key]
+
+    # Save data back to mat file
+    sio.savemat(matFileName, {'m_fCurves': m_fCurves,
+                              'v_fRate': v_fRate,
+                              'rateResults': rateResults,
+                              'errorResults': errorResults,
+                              'time': timeResults,
+                              'algorithmName': algorithmName,
+                              'runTime': runTimeResults,
+                              'trainEpochs': trainEpochs,
+                              'notes': notes})
+
+
+def content(test):
+    '''Print the log of specified test
+
+        Parameters
+        ----------
+            optional (add as a string input, PLACE IN THE BEGINNING):
+
+                'clear'
+                    Reaets all the log
+
+            test=
+                Specify number of test to delete. For example:
+                    deleteResult(test=1)
+                deletes the first test
+                Accepts tuples also:
+                    deleteResult(index=(2, 4, 5))
+                deletes second, fourth and fifth tests
+    '''
+
+    dontExistMessage = '________________'
+
+    # Load data from file
+    theoryBounds = sio.loadmat(matFileName)
+
+    # Get x (rate) vector and y (errors) matrix and previous results rate and errors
+    m_fCurves = theoryBounds['m_fCurves']
+    v_fRate = theoryBounds['v_fRate']
+    rateResults = theoryBounds['rateResults']
+    errorResults = theoryBounds['errorResults']
+    runTimeResults = theoryBounds['runTime']
+    timeResults = theoryBounds['time']
+    algorithmName = theoryBounds['algorithmName']
+    trainEpochs = theoryBounds['trainEpochs']
+    notes = theoryBounds['notes']
+
+    if not(type(test) is tuple):
+        testNum = (test,)
+    else:
+        testNum = test
+
+    for i in testNum:
+        if not algorithmName[0, i-1]:
+            algToPrint = dontExistMessage
+        else:
+            algToPrint = removeCellFormat(algorithmName[0, i-1])
+
+        if not runTimeResults[0, i-1]:
+            runtimeToPrint = dontExistMessage
+        else:
+            runtimeToPrint = removeCellFormat(runTimeResults[0, i-1])
+
+        if not trainEpochs[0, i-1]:
+            epochToPrint = dontExistMessage
+        else:
+            epochToPrint = trainEpochs[0, i-1]
+
+        if not notes[0, i-1]:
+            noteToPrint = dontExistMessage
+        else:
+            noteToPrint = removeCellFormat(notes[0, i-1])
+
+        print('\n\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\n\n'
+              'Test {} Info\n\n'
+              'Rate:\t\t{}\nLoss:\t\t{}\nAlgorithm:\t{}\n'
+              'Train Runtime:\t{}\nTrain Epochs:\t{}\nLogging Time:\t{}\n'
+              'Note:\t\t{}'
+              '\n\n\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\n'
+              .format(i, rateResults[0, i-1], errorResults[0, i-1],
+                      algToPrint, runtimeToPrint,
+                      epochToPrint, timeResults[i-1], noteToPrint))
