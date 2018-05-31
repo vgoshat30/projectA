@@ -2,7 +2,7 @@
 
 This module is used to save, view, edit or delete test result into a .mat MATLAB
 file. It does not contain any calculations nor learning algorithms and deals
-only with menaging the log, and user inteface.
+only with menaging the log and user inteface.
 
 Notes
 -----
