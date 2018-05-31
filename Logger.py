@@ -1,3 +1,18 @@
+'''Keeps a log of test results
+
+This module is used to save, view, edit or delete test result into a .mat MATLAB
+file. It does not contain any calculations nor learning algorithms and deals
+only with menaging the log, and user inteface.
+
+Notes
+-----
+    Functions intendes to be used outside of the module:
+        - log(rate, error, *handleMethod, **kwargs)
+        - delete(test)
+        - edit(test, **kwargs)
+        - content(test)
+'''
+
 import scipy.io as sio
 import numpy as np
 import matplotlib.pyplot as plt
@@ -38,10 +53,30 @@ linecolors = ['black', 'red', 'red', 'blue', 'red', 'lime']
 lineWidths = [1, 1, 1, 1, 1, 1.5]
 markerSizes = [4, 1, 1, 1, 1, 1]
 markerLinewidths = [1, 1, 1, 1, 1, 1]
+pointMarker = 'x'
 pointsColor = 'orange'
+chosenMarker = 'o'
+chosenColor = 'red'
+tooltipBoxStyle = 'round'
+tooltipBoxColor = 'wheat'
 
 
 def reandomTickPos(x, y):
+    """Add a random position "noise" to a test number attached to a point
+
+    Parameters
+    ----------
+    x: numpy.float64
+        X position of a test log(rate)
+    y: numpy.float64
+        Y position of a test log(average loss)
+
+    Returns
+    -------
+    (X_new, Y_new): tuple
+        The input X and Y arguments, with added noise
+    """
+
     noise = 0.03
     bias = 0.4
     randX = 2*random.random() - 1
@@ -58,20 +93,24 @@ def removeCellFormat(formatted):
 
         Parameters
         ----------
-        formatted
-            Formatted str (or numpy array - its casted to string anyway) to be
-            cleared.
+        formatted : numpy.ndarray
+            An ndarray containing a sting formatted as: ['stuff']
 
         Returns
         -------
-        unformatted
-            Unformatted string.
+        unformatted : str
+            The string contained in the input, without the characters: [  '  ]
 
         Example
         -------
-        ans = removeCellFormat(['hello'])
-        print(ans)
-        >>> hello
+        >>> import numpy as np
+        >>> from Logger import *
+        >>> dirty = np.append("['first']", "['second']")
+        >>> print(dirty[0])
+        ['first']
+        >>> clean = removeCellFormat(dirty[0])
+        >>> print(clean)
+        first
     '''
     unformatted = str(formatted).replace("[", "")
     unformatted = unformatted.replace("]", "")
@@ -80,18 +119,33 @@ def removeCellFormat(formatted):
 
 
 def getTextAlignment(x, y, textOffset):
-    '''Set the textbox alignment according to its position on the graph
+    '''Set tooltip textbox alignment and its offset from the corresponding point
+        on the graph
 
         Parameters
         ----------
-        x   y
-            x and y values of the datapoint
+        x : numpy.ndarray
+            X position of a test log (rate)
+        y : numpy.ndarray
+            Y position of a test log (average loss)
+        textOffset : float
+            The absolute value of the offset of the tooltip from the point
 
         Returns
         -------
-        (ha, va, xOffset, yOffset)
-            Horizontal alignment and vertical alignment and offset of tooltop
-            from the datapoint
+        (ha, va, xOffset, yOffset) : tuple
+            ha : str
+                Horizontal alignment as accepted by the text property:
+                horizontalalignment of the matplotlib.
+                Possible values: [ 'right' | 'left' ]
+            ha : str
+                Vertical alignment as accepted by the text property:
+                verticalalignment of the matplotlib.
+                Possible values: [ 'top' | 'bottom' ]
+            xOffset : float
+                The X axis offset of the textbox
+            yOffset : float
+                The Y axis offset of the textbox
     '''
     axs = plt.gca()
     xlim = axs.get_xlim()
@@ -115,56 +169,53 @@ def getTextAlignment(x, y, textOffset):
 
 
 def log(rate=None, error=None, *handleMethod, **kwargs):
-    '''Plot the result compares to the theory
+    '''Plot a test result (rate and loss) in respect to theoretical graphs
 
         IMPORTANT!!!
             The function opens a figure which will pause all your code until
             closed! If you want the code to continue, use 'dontshow' (see below)
 
-        Opens a new figure, plots all the theoretical bounds and add a point at
-        (rate, error). Also showing all previously saved results and enumerates
-        them on the plot itself.
-        Click any datapoint to oped a tooltip with all the information available
-        for it.
+        The function opens a new figure, plots all the theoretical bounds and
+        adds a point at (rate, error) of the current test.
+        Also, all previously saved results are plotted and enumerated according
+        to their logging order.
+        Click any datapoint to open a tooltip with additional imformation.
+        To see all imformation available for a test, see help for the function
+        content(test)
 
-        Args
-        ----
-            When called with no args, plots the saved tests to a figure
+        Parameters
+        ----------
+            When called with no args, plots all previously saved tests
 
-            rate
-
+            rate : float
                 The quantization rate of the current test
-
-            error
-
-                The resulting error of the current test
-
-            optional (add as a string input, PLACE BEFORE algorithm and runtime
-                    and after rate and error):
-
+            error : float
+                The resulting average loss of the current test
+            *args
                 'dontshow'
-
-                    Only saves the new test results and dont display plot
-
+                    Only saving the test result and not openning a figure
                 'dontsave'
+                    Only plotting result and not saving it
+            **kwargs
+                algorithm : str
+                    The name of the algorithm used (preferably a short one)
+                runtime : datetime.timedelta
+                    The runtime of the algorithm
+                epochs : int
+                    Number of training epochs
+                note : str
+                    A note regarding the test (can be accessed only trough the
+                    function content(test))
 
-                    Only displays results and dont save results
-
-            algorithm=
-
-                Spesify a string with the name of the algorithm (preferably a
-                short one) for example:
-
-                    logResult(0.3, 0.04, algorithm='Simple Linear')
-
-            runtime=
-
-                The runtime of the algorithm. Accepts only timedelta types of
-                the datetime packege
-
-            epochs=
-
-                Specify number of training epochs
+        Example
+        -------
+        >>> from datetime import datetime
+        >>> import Logger as log
+        >>> start = datetime.now()
+        >>> end = datetime.now() - start
+        >>> log.log(0.2, 0.6, 'dontshow', algorithm='SOM', runtime=end, epochs=2,
+        ...         note='This is an exaple of the log function')
+        Saved result of test number 1
     '''
 
     def pick_handler(event):
@@ -173,25 +224,28 @@ def log(rate=None, error=None, *handleMethod, **kwargs):
         # Get the pressed artist
         artist = event.artist
 
-        if artist.get_marker() is 'o':
+        # If the clicked point was already chosen, clear all tooltips and return
+        if artist.get_marker() is chosenMarker:
             clearDatatips(event, -1)
             return
 
         # Mark the chosen point
-        artist.set(marker='o', markersize=chosenMarkersize, color='r')
+        artist.set(marker=chosenMarker, markersize=chosenMarkersize,
+                   color=chosenColor)
 
-        # Handle chosen result:
+        # Get the index of the clicked point in the test log
         chosenIndex = resList.index(artist)
         # Hide current result index
         indexText[chosenIndex].set(alpha=0)
         # Show chosen texbox
-        textBoxes[chosenIndex] = dict(boxstyle='round', facecolor='wheat',
+        textBoxes[chosenIndex] = dict(boxstyle=tooltipBoxStyle,
+                                      facecolor=tooltipBoxColor,
                                       alpha=textboxAlpha)
-        # Show chosen datatip
-        datatips[chosenIndex].set(alpha=datatipAlpha,
+        # Show chosen tooltip
+        tooltips[chosenIndex].set(alpha=datatipAlpha,
                                   bbox=textBoxes[chosenIndex])
 
-        # Clear other dataTips
+        # Clear other tooltips
         clearDatatips(event, chosenIndex)
 
         # Update figure
@@ -199,22 +253,31 @@ def log(rate=None, error=None, *handleMethod, **kwargs):
         fig.canvas.flush_events()
 
     def clearDatatips(event, exeptInex):
-        '''Clears all datatips
+        '''Clears tooltips
+
+            Parameters
+            ----------
+            event : matplotlib.backend_bases.PickEvent
+                Callback pick event
+            exeptInex : int
+                Dont clear the tooltip of the point at the specified index
+                Pass -1 to clear all tooltips
         '''
 
         for ii in range(0, len(resList)):
             if ii is exeptInex:
                 continue
             # Unmark all other points
-            resList[ii].set(marker='x', markersize=regMarkerSize,
+            resList[ii].set(marker=pointMarker, markersize=regMarkerSize,
                             color=pointsColor)
             # Show all result indecies
             indexText[ii].set(alpha=indexAlpha)
             # Hide all textBoxes
-            textBoxes[ii] = dict(boxstyle='round', facecolor='wheat',
+            textBoxes[ii] = dict(boxstyle=tooltipBoxStyle,
+                                 facecolor=tooltipBoxColor,
                                  alpha=0)
-            # Hide all result datatips
-            datatips[ii].set(alpha=0, bbox=textBoxes[ii])
+            # Hide all result tooltips
+            tooltips[ii].set(alpha=0, bbox=textBoxes[ii])
 
         # Update figure
         fig.canvas.draw()
@@ -223,7 +286,8 @@ def log(rate=None, error=None, *handleMethod, **kwargs):
     # Load data from file
     theoryBounds = sio.loadmat(matFileName)
 
-    # Get x (rate) vector and y (errors) matrix and previous results rate and errors
+    # Get x (rate) vector and y (errors) matrix and previous results rate and
+    # errors
     m_fCurves = theoryBounds['m_fCurves']
     v_fRate = theoryBounds['v_fRate']
     rateResults = theoryBounds['rateResults']
@@ -257,8 +321,9 @@ def log(rate=None, error=None, *handleMethod, **kwargs):
         if key is 'note':
             notesToSave[-1] = kwargs[key]
 
-    if not(('dontsave' in handleMethod)) and not(rate is None) and not(error is None):
-        # Append the results to the mat file
+    if not(('dontsave' in handleMethod)) and not(rate is None) and \
+            not(error is None):
+            # Append the results to the mat file
         sio.savemat(matFileName, {'m_fCurves': m_fCurves,
                                   'v_fRate': v_fRate,
                                   'rateResults': np.append(rateResults,
@@ -308,7 +373,7 @@ def log(rate=None, error=None, *handleMethod, **kwargs):
                                label='Results', picker=5)
 
         indexText = []
-        datatips = []
+        tooltips = []
         textBoxes = []
         for ii in range(0, rateResults.shape[1]):
             # Enumerate result points in the figure
@@ -326,8 +391,9 @@ def log(rate=None, error=None, *handleMethod, **kwargs):
             currIterDateTime = datetime.strptime(timeToSave[ii],
                                                  '%Y-%m-%d %H:%M:%S.%f')
             if runTimeToSave[ii]:
-                currRuntime = datetime.strptime(removeCellFormat(runTimeToSave[ii]),
-                                                '%H:%M:%S.%f')
+                currRuntime = datetime.strptime(removeCellFormat(
+                    runTimeToSave[ii]),
+                    '%H:%M:%S.%f')
             if algToSave[ii] and runTimeToSave[ii]:
                 textToDisplay = 'Rate: ' + str(rateResults[0, ii]) + \
                     '\nAvg. Distortion: ' + str(errorResults[0, ii]) + \
@@ -352,11 +418,10 @@ def log(rate=None, error=None, *handleMethod, **kwargs):
                     '\nAvg. Distortion: ' + str(errorResults[0, ii]) + \
                     '\nDate: ' + currIterDateTime.strftime('%d/%m/%y') + \
                     '\nTime: ' + currIterDateTime.strftime('%H:%M:%S')
-
             textAlign = getTextAlignment(resList[ii].get_xdata(),
                                          resList[ii].get_ydata(),
                                          textOffset)
-            datatips.append(ax.text(resList[ii].get_xdata()+textAlign[2],
+            tooltips.append(ax.text(resList[ii].get_xdata()+textAlign[2],
                                     resList[ii].get_ydata()+textAlign[3],
                                     textToDisplay,
                                     alpha=0, fontsize=dataTipFontsize,
@@ -377,9 +442,10 @@ def log(rate=None, error=None, *handleMethod, **kwargs):
             currIterDateTime = datetime.strptime(timeToSave[-1],
                                                  '%Y-%m-%d %H:%M:%S.%f')
             if runTimeToSave[-1]:
-                currRuntime = datetime.strptime(removeCellFormat(runTimeToSave[-1]),
-                                                '%H:%M:%S.%f')
-            # Last result datatip
+                currRuntime = datetime.strptime(removeCellFormat(
+                    runTimeToSave[-1]),
+                    '%H:%M:%S.%f')
+            # Last result tooltip
             if algToSave[-1] and runTimeToSave[-1]:
                 textToDisplay = 'Rate: ' + str(rate) + \
                     '\nAvg. Distortion: ' + str(error) + \
@@ -407,7 +473,7 @@ def log(rate=None, error=None, *handleMethod, **kwargs):
             textAlign = getTextAlignment(resList[lastResultIndex].get_xdata(),
                                          resList[lastResultIndex].get_ydata(),
                                          textOffset)
-            datatips.append(ax.text(resList[lastResultIndex].get_xdata() +
+            tooltips.append(ax.text(resList[lastResultIndex].get_xdata() +
                                     textAlign[2],
                                     resList[lastResultIndex].get_ydata() +
                                     textAlign[3], textToDisplay,
@@ -417,35 +483,49 @@ def log(rate=None, error=None, *handleMethod, **kwargs):
 
         # Labeling and graph appearance
         plt.xlabel('Rate', fontsize=18, fontname='Times New Roman')
-        plt.ylabel('Average Distortion', fontsize=18, fontname='Times New Roman')
+        plt.ylabel('Average Distortion', fontsize=18,
+                   fontname='Times New Roman')
         ax.legend(fontsize=6)
         ax.autoscale(enable=True, axis='x', tight=True)
         # Show figure
         plt.show()
 
 
-def delete(*args, **kwargs):
-    '''Delete all or part of the data log
+def delete(test=None):
+    '''Delete specific test or clear all test log
 
         Parameters
         ----------
-            optional (add as a string input, PLACE IN THE BEGINNING):
+            test : int OR tuple of int OR nothing
+                If type(test) is int
+                    Deleting specified test
+                If type(test) is tuple
+                    Deleting all test specified in the tuple
+                If test is empty, clearing all test log
 
-                'clear'
-                    Reaets all the log
-
-            testindex=
-                Specify index of test to delete. For example:
-                    deleteResult(test=1)
-                deletes the SECOND test
-                Accepts tuples also:
-                    deleteResult(index=(2, 4, 5))
-                deletes third, fifth and sixth tests
+        Example
+        -------
+        >>> import Logger as log
+        >>> log.log(0.1, 0.5, 'dontshow')
+        Saved result of test number 1
+        >>> log.log(0.1, 0.4, 'dontshow')
+        Saved result of test number 2
+        >>> log.log(0.3, 0.2, 'dontshow')
+        Saved result of test number 3
+        >>> log.log(0.4, 0.5, 'dontshow')
+        Saved result of test number 4
+        >>> log.delete(4)
+        Deleted test nuber 4
+        >>> log.delete((1, 3))
+        Deleted tests: (1, 3)
+        >>> log.delete()
+        Cleared test log
     '''
     # Load data from file
     theoryBounds = sio.loadmat(matFileName)
 
-    # Get x (rate) vector and y (errors) matrix and previous results rate and errors
+    # Get x (rate) vector and y (errors) matrix and previous results rate and
+    # errors
     m_fCurves = theoryBounds['m_fCurves']
     v_fRate = theoryBounds['v_fRate']
     rateResults = theoryBounds['rateResults']
@@ -456,17 +536,25 @@ def delete(*args, **kwargs):
     trainEpochs = theoryBounds['trainEpochs']
     notes = theoryBounds['notes']
 
-    for key in kwargs:
-        if key is 'testindex':
-            rateResults = np.delete(rateResults, kwargs[key], 1)
-            errorResults = np.delete(errorResults, kwargs[key], 1)
-            runTimeResults = np.delete(runTimeResults, kwargs[key], 1)
-            timeResults = np.delete(timeResults, kwargs[key])
-            algorithmName = np.delete(algorithmName, kwargs[key], 1)
-            trainEpochs = np.delete(trainEpochs, kwargs[key], 1)
-            notes = np.delete(notes, kwargs[key], 1)
+    # If specified number of test(s)
+    if not(test is None):
+        if type(test) is tuple:
+            testIndex = ()
+            for i, testNum in enumerate(test):
+                testIndex += (testNum - 1,)
+            print('Deleted tests:', test)
+        else:
+            testIndex = test - 1
+            print('Deleted test nuber', test)
 
-    if 'clear' in args:
+        rateResults = np.delete(rateResults, testIndex, 1)
+        errorResults = np.delete(errorResults, testIndex, 1)
+        runTimeResults = np.delete(runTimeResults, testIndex, 1)
+        timeResults = np.delete(timeResults, testIndex)
+        algorithmName = np.delete(algorithmName, testIndex, 1)
+        trainEpochs = np.delete(trainEpochs, testIndex, 1)
+        notes = np.delete(notes, testIndex, 1)
+    else:
         rateResults = np.empty((0, 1), float)  # MATLAB Array of doubles
         errorResults = np.empty((0, 1), float)  # MATLAB Array of doubles
         runTimeResults = np.empty((0, 1), object)  # MATLAB Cell
@@ -474,6 +562,7 @@ def delete(*args, **kwargs):
         algorithmName = np.empty((0, 1), object)  # MATLAB Cell
         trainEpochs = np.empty((0, 1), float)  # MATLAB Array of doubles
         notes = np.empty((0, 1), object)  # MATLAB Cell
+        print('Cleared test log')
 
     # Save data back to mat file
     sio.savemat(matFileName, {'m_fCurves': m_fCurves,
@@ -495,16 +584,21 @@ def edit(test, **kwargs):
             test
                 Number of test to edit
 
-            Optional:
+            **kwargs
+                algorithm
+                    New algorithm name
+                epochs
+                    New train epochs number
+                note
+                    New note
 
-                algorithm=
-                    Change algorithm name
-
-                epochs=
-                    Change train epochs number
-
-                note=
-                    Change the note for this test
+            Example
+            -------
+            >>> import Logger as log
+            >>> log.log(0.2, 0.6, 'dontshow')
+            Saved result of test number 1
+            >>> log.edit(1, algorithm='RNN')
+            Changed algorithm of test number 1 to: RNN
     '''
     # Load data from file
     theoryBounds = sio.loadmat(matFileName)
@@ -530,6 +624,8 @@ def edit(test, **kwargs):
         if key is 'note':
             notes[0, test-1] = kwargs[key]
 
+    print('Changed', key, 'of test number', test, 'to:', kwargs[key])
+
     # Save data back to mat file
     sio.savemat(matFileName, {'m_fCurves': m_fCurves,
                               'v_fRate': v_fRate,
@@ -543,22 +639,34 @@ def edit(test, **kwargs):
 
 
 def content(test):
-    '''Print the log of specified test
+    '''Print all information available for specified test
 
         Parameters
         ----------
-            optional (add as a string input, PLACE IN THE BEGINNING):
+            test : int
+                Number of test to print data for
 
-                'clear'
-                    Reaets all the log
+        Example
+        -------
+        >>> import Logger as log
+        >>> log.log(0.3, 0.4, 'dontshow', algorithm='Best One', epochs=10,
+        ...         note='Used for an example of the content(test) function')
+        Saved result of test number 1
+        >>> log.content(1)
 
-            test=
-                Specify number of test to delete. For example:
-                    deleteResult(test=1)
-                deletes the first test
-                Accepts tuples also:
-                    deleteResult(index=(2, 4, 5))
-                deletes second, fourth and fifth tests
+        \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/
+
+        Test 1 Info
+
+        Rate:		0.3
+        Loss:		0.4
+        Algorithm:	Best One
+        Train Runtime:	________________
+        Train Epochs:	10.0
+        Logging Time:	2018-05-31 13:50:17.117906
+        Note:		Used for an example of the content(test) function
+
+        \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/
     '''
 
     dontExistMessage = '________________'
