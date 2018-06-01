@@ -121,9 +121,8 @@ def test(model):
 
 
 def testTanh(model):
-    codebook = TanhToStep.extractModelParameters(model)
-    print("here 1")
-    print(codebook)
+    f, a, b, infVal = TanhToStep.extractModelParameters(model)
+    classificationCounter = np.zeros(M)
     test_loss = 0
     for batch_idx, (data, target) in enumerate(testLoader):
         data, target = Variable(data.float()), Variable(target.float())
@@ -133,14 +132,16 @@ def testTanh(model):
         output_numpy = output_data.numpy()
         for ii in range(0, output_data.size(0)):
             for jj in range(0, output_data.size(1)):
-                output[ii][jj] = TanhToStep.QuantizeWithDict(
-                    output_numpy[ii][jj], codebook)
+                output[ii, jj], kk = TanhToStep.QuantizeTanh(
+                    output_numpy[ii, jj], f, b, infVal)
+                classificationCounter[kk] += 1
         output = model.l3(output)
         output = model.l4(output)
         output = model.l5(output)
         # sum up batch loss
         test_loss += criterion(output.view(-1, 1), target.view(-1, 1))
 
+    print('Num. of clasifications by word:', classificationCounter)
     test_loss /= (len(testLoader.dataset)/BATCH_SIZE)
     return test_loss.detach().numpy()
 
@@ -238,110 +239,111 @@ scheduler_linDigitalSign = optim.lr_scheduler.LambdaLR(
 # ---       Training         ---
 # ------------------------------
 
-UI.trainHeding()
+for EPOCHS_tanhQuantize in [5, 7, 10]:
 
-if 'Linear sign quantization' in modelsToActivate:
-    model_linSignQunat_runtime = datetime.now()
-    modelname = 'Linear sign quantization'
-    UI.trainMessage(modelname)
-    train(modelname, EPOCHS_linSignQunat, model_linSignQunat,
-          optimizer_linSignQunat)
-    model_linSignQunat_runtime = datetime.now() - model_linSignQunat_runtime
+    UI.trainHeding()
 
+    if 'Linear sign quantization' in modelsToActivate:
+        model_linSignQunat_runtime = datetime.now()
+        modelname = 'Linear sign quantization'
+        UI.trainMessage(modelname)
+        train(modelname, EPOCHS_linSignQunat, model_linSignQunat,
+              optimizer_linSignQunat)
+        model_linSignQunat_runtime = datetime.now() - model_linSignQunat_runtime
 
-if 'Linear uniform codebook' in modelsToActivate:
-    model_linUniformQunat_runtime = datetime.now()
-    modelname = 'Linear uniform codebook'
-    UI.trainMessage(modelname)
-    train(modelname, EPOCHS_linUniformQunat, model_linUniformQunat,
-          optimizer_linUniformQunat)
-    # step the learning rate decay
-    scheduler_linUniformQunat.step()
-    model_linUniformQunat_runtime = datetime.now() - \
-        model_linUniformQunat_runtime
+    if 'Linear uniform codebook' in modelsToActivate:
+        model_linUniformQunat_runtime = datetime.now()
+        modelname = 'Linear uniform codebook'
+        UI.trainMessage(modelname)
+        train(modelname, EPOCHS_linUniformQunat, model_linUniformQunat,
+              optimizer_linUniformQunat)
+        # step the learning rate decay
+        scheduler_linUniformQunat.step()
+        model_linUniformQunat_runtime = datetime.now() - \
+            model_linUniformQunat_runtime
 
-if 'Linear SOM learning codebook' in modelsToActivate:
-    model_linSOMQuant_runtime = datetime.now()
-    modelname = 'Linear SOM learning codebook'
-    UI.trainMessage(modelname)
-    model_SOM = trainSOM(modelname, EPOCHS_linSOMQuant, S_codebook)
-    model_linSOMQuant_runtime = datetime.now() - model_linSOMQuant_runtime
+    if 'Linear SOM learning codebook' in modelsToActivate:
+        model_linSOMQuant_runtime = datetime.now()
+        modelname = 'Linear SOM learning codebook'
+        UI.trainMessage(modelname)
+        model_SOM = trainSOM(modelname, EPOCHS_linSOMQuant, S_codebook)
+        model_linSOMQuant_runtime = datetime.now() - model_linSOMQuant_runtime
 
-if 'Analog sign quantization' in modelsToActivate:
-    modelname = 'Analog sign quantization'
-    UI.trainMessage(modelname)
-    trainAnalogDigital(modelname, EPOCHS_ADSignQuant, model_linAnalogSign,
-                       model_linDigitalSign,
-                       optimizer_linAnalogSign, optimizer_linDigitalSign,
-                       S_codebook)
-    # step the learning rate decay
-    scheduler_linDigitalSign.step()
+    if 'Analog sign quantization' in modelsToActivate:
+        modelname = 'Analog sign quantization'
+        UI.trainMessage(modelname)
+        trainAnalogDigital(modelname, EPOCHS_ADSignQuant, model_linAnalogSign,
+                           model_linDigitalSign,
+                           optimizer_linAnalogSign, optimizer_linDigitalSign,
+                           S_codebook)
+        # step the learning rate decay
+        scheduler_linDigitalSign.step()
 
-if 'RNN sign quantization' in modelsToActivate:
-    modelname = 'RNN sign quantization'
-    UI.trainMessage(modelname)
-    train(modelname, EPOCHS_rnnSignQuant, model_rnnSignQuant,
-          optimizer_rnnSignQuant)
+    if 'RNN sign quantization' in modelsToActivate:
+        modelname = 'RNN sign quantization'
+        UI.trainMessage(modelname)
+        train(modelname, EPOCHS_rnnSignQuant, model_rnnSignQuant,
+              optimizer_rnnSignQuant)
 
-if 'LSTM sign quantization' in modelsToActivate:
-    modelname = 'LSTM sign quantization'
-    UI.trainMessage(modelname)
-    train(modelname, EPOCHS_lstmSignQuant, model_lstmSignQuant,
-          optimizer_lstmSignQuant)
+    if 'LSTM sign quantization' in modelsToActivate:
+        modelname = 'LSTM sign quantization'
+        UI.trainMessage(modelname)
+        train(modelname, EPOCHS_lstmSignQuant, model_lstmSignQuant,
+              optimizer_lstmSignQuant)
 
-if 'Tanh quantization' in modelsToActivate:
-    modelname = 'Tanh quantization'
-    UI.trainMessage(modelname)
-    model_tanhQuantize_runtime = datetime.now()
-    train(modelname, EPOCHS_tanhQuantize, model_tanhQuantize,
-          optimizer_tanhQuantize)
-    model_tanhQuantize_runtime = datetime.now() - model_tanhQuantize_runtime
+    if 'Tanh quantization' in modelsToActivate:
+        modelname = 'Tanh quantization'
+        UI.trainMessage(modelname)
+        model_tanhQuantize_runtime = datetime.now()
+        train(modelname, EPOCHS_tanhQuantize, model_tanhQuantize,
+              optimizer_tanhQuantize)
+        model_tanhQuantize_runtime = datetime.now() - model_tanhQuantize_runtime
 
-# ------------------------------
-# ---        Testing         ---
-# ------------------------------
+    # ------------------------------
+    # ---        Testing         ---
+    # ------------------------------
 
-UI.testHeding()
-if 'Linear sign quantization' in modelsToActivate:
-    modelname = 'Linear sign quantization'
-    UI.testMessage()
-    model_linSignQunat_loss = test(model_linSignQunat)
-    UI.testResults(QUANTIZATION_RATE, model_linSignQunat_loss)
-    log.log(QUANTIZATION_RATE, model_linSignQunat_loss,
-            algorithm=modelname,
-            runtime=model_linSignQunat_runtime)
+    UI.testHeding()
 
-if 'Linear uniform codebook' in modelsToActivate:
-    modelname = 'Linear uniform codebook'
-    UI.testMessage(modelname)
-    model_linUniformQunat_loss = test(model_linUniformQunat)
-    log.log(QUANTIZATION_RATE, model_linUniformQunat_loss,
-            algorithm=modelname,
-            runtime=model_linUniformQunat_runtime)
+    if 'Linear sign quantization' in modelsToActivate:
+        modelname = 'Linear sign quantization'
+        UI.testMessage()
+        model_linSignQunat_loss = test(model_linSignQunat)
+        UI.testResults(QUANTIZATION_RATE, model_linSignQunat_loss)
+        log.log(QUANTIZATION_RATE, model_linSignQunat_loss,
+                algorithm=modelname,
+                runtime=model_linSignQunat_runtime)
 
+    if 'Linear uniform codebook' in modelsToActivate:
+        modelname = 'Linear uniform codebook'
+        UI.testMessage(modelname)
+        model_linUniformQunat_loss = test(model_linUniformQunat)
+        log.log(QUANTIZATION_RATE, model_linUniformQunat_loss,
+                algorithm=modelname,
+                runtime=model_linUniformQunat_runtime)
 
-if 'Linear SOM learning codebook' in modelsToActivate:
-    modelname = 'Linear SOM learning codebook'
-    UI.testMessage()
-    model_linSOMQuant_loss = test(model_SOM)
-    log.log(QUANTIZATION_RATE, model_linSOMQuant_loss,
-            algorithm=modelname,
-            runtime=model_linSOMQuant_runtime)
+    if 'Linear SOM learning codebook' in modelsToActivate:
+        modelname = 'Linear SOM learning codebook'
+        UI.testMessage()
+        model_linSOMQuant_loss = test(model_SOM)
+        log.log(QUANTIZATION_RATE, model_linSOMQuant_loss,
+                algorithm=modelname,
+                runtime=model_linSOMQuant_runtime)
 
+    if 'RNN sign quantization' in modelsToActivate:
+        UI.testMessage('RNN sign quantization')
+        test(model_rnnSignQuant)
 
-if 'RNN sign quantization' in modelsToActivate:
-    UI.testMessage('RNN sign quantization')
-    test(model_rnnSignQuant)
+    if 'LSTM sign quantization' in modelsToActivate:
+        UI.testMessage('LSTM sign quantization')
+        test(model_lstmSignQuant)
 
-if 'LSTM sign quantization' in modelsToActivate:
-    UI.testMessage('LSTM sign quantization')
-    test(model_lstmSignQuant)
-
-if 'Tanh quantization' in modelsToActivate:
-    modelname = 'Tanh quantization'
-    UI.testMessage(modelname)
-    model_tanhQuantize_loss = testTanh(model_tanhQuantize)
-    UI.testResults(QUANTIZATION_RATE, model_tanhQuantize_loss)
-    log.log(QUANTIZATION_RATE, model_tanhQuantize_loss,
-            algorithm=modelname,
-            runtime=model_tanhQuantize_runtime)
+    if 'Tanh quantization' in modelsToActivate:
+        modelname = 'Tanh quantization'
+        UI.testMessage(modelname)
+        model_tanhQuantize_loss = testTanh(model_tanhQuantize)
+        UI.testResults(QUANTIZATION_RATE, model_tanhQuantize_loss)
+        log.log(QUANTIZATION_RATE, model_tanhQuantize_loss,
+                algorithm=modelname,
+                runtime=model_tanhQuantize_runtime,
+                epochs=EPOCHS_tanhQuantize)

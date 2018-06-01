@@ -32,11 +32,7 @@ def extractModelParameters(tanhModel):
 
     parameters = tanhModel.q1.weight.data.numpy()
 
-    # The bouderies for the solver. It will search zeros of the second
-    # derivative in the range: (a[i]-searchField, a[i]+searchField)
-    searchField = 3
     # Coefficients of the tanh
-
     a = []
     b = []
     for ii in range(0, M - 1):
@@ -64,37 +60,22 @@ def extractModelParameters(tanhModel):
     np_tanh = sym.lambdify(symX, sym_tanh, "numpy")
     np_tanh_deriv1 = sym.lambdify(symX, sym_tanh_deriv1, "numpy")
     np_tanh_deriv2 = sym.lambdify(symX, sym_tanh_deriv2, "numpy")
-    # Find the wanted zero of the second derivative of tanh
-    # IMPORTANT!!!
-    # This is actually cheating! Because the root is always in a[ii]!
-    np_tanh_deriv2_zeros = np.asarray(b)
-    codebook = {}
-    codebook[np_tanh_deriv2_zeros[0]] = np_tanh((3*np_tanh_deriv2_zeros[0] - np_tanh_deriv2_zeros[1])/2)
-    codebook[extraKey] = np_tanh((3*np_tanh_deriv2_zeros[np_tanh_deriv2_zeros.size - 1] - np_tanh_deriv2_zeros[np_tanh_deriv2_zeros.size - 2])/2)
-    for ii in range(1, np_tanh_deriv2_zeros.size):
-        key = np_tanh_deriv2_zeros[ii]
-        val = np_tanh((np_tanh_deriv2_zeros[ii] - np_tanh_deriv2_zeros[ii - 1])/2)
-        codebook[key] = val
-    print('Relevant zeros of the second derivative:\n', np_tanh_deriv2_zeros)
-    # Plot
-    x = np.linspace(xlim[0], xlim[1], num=resolution)
-    plt.plot(x, np_tanh(x))
-    plt.plot(x, np_tanh_deriv2(x), color='green')
-    plt.plot(np_tanh_deriv2_zeros, np_tanh(np_tanh_deriv2_zeros), 'x',
-             color='red')
-    # plt.show()
-    return codebook
+    f = np_tanh
+    infVal = sum(a)
+    print('Tanh amplitudes (a):\n', a)
+    print('Tanh shifts (b):\n', b)
+    return f, a, b, infVal
 
 
-def QuantizeWithDict(input, codebook):
-    codebookKeys = list(codebook.keys())
-    codebookKeys = sorted(codebookKeys)
-    if codebookKeys[0] > input:
-        return codebook[codebookKeys[0]]
-    if codebookKeys[-2] < input:
-        return codebook[codebookKeys[-1]]
-    for ii in range (1, len(codebookKeys) - 1):
-        if codebookKeys[ii - 1] < input and input < codebookKeys[ii]:
-            return codebook[codebookKeys[ii]]
+def QuantizeTanh(input, f, borders, infVal):
+    borders.sort()
+    if input <= borders[0]:
+        return -infVal, 0
+    if input > borders[-1]:
+        return infVal, M - 1
+    for ii in range(0, len(borders) - 1):
+        if borders[ii] < input and input <= borders[ii + 1]:
+            return f((borders[ii + 1] + borders[ii])/2), ii + 1
+
     print("No available return value")
-    return -1
+    return -1, -1
