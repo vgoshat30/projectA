@@ -8,11 +8,9 @@ from datetime import datetime
 import Logger as log
 from torch.nn.parameter import Parameter
 import torch
+import sys
+import time
 
-aa = [1, 2, 3]
-print(type(aa))
-aa = np.asarray(aa)
-print(type(aa))
 
 # The bouderies for the solver. It will search zeros of the second derivative in
 # the range: (a[i]-searchField, a[i]+searchField)
@@ -53,4 +51,4 @@ x = np.linspace(xlim[0], xlim[1], num=resolution)
 plt.plot(x, np_tanh(x))
 plt.plot(x, np_tanh_deriv2(x), color='green')
 plt.plot(np_tanh_deriv2_zeros, np_tanh(np_tanh_deriv2_zeros), 'x', color='red')
-# plt.show()
+plt.show()

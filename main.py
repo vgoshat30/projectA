@@ -289,7 +289,7 @@ if 'LSTM sign quantization' in modelsToActivate:
     train(modelname, EPOCHS_lstmSignQuant, model_lstmSignQuant,
           optimizer_lstmSignQuant)
 
-if 'Tanh quantizationddd' in modelsToActivate:
+if 'Tanh quantization' in modelsToActivate:
     modelname = 'Tanh quantization'
     UI.trainMessage(modelname)
     model_tanhQuantize_runtime = datetime.now()
