@@ -39,9 +39,10 @@ def extractModelParameters(tanhModel):
 
     a = []
     b = []
-    for ii in range(0, M):
+    for ii in range(0, M - 1):
         a.append(parameters[2*ii, 0])
         b.append(parameters[2*ii + 1, 0])
+    extraKey = max(b) + 1
     # X axis limit
     xlim = [-10, 45]
     # Number of points in the graph
@@ -55,9 +56,7 @@ def extractModelParameters(tanhModel):
         a[3] * sym.tanh(symX + b[3]) + \
         a[4] * sym.tanh(symX + b[4]) + \
         a[5] * sym.tanh(symX + b[5]) + \
-        a[6] * sym.tanh(symX + b[6]) + \
-        a[7] * sym.tanh(symX + b[7])
-
+        a[6] * sym.tanh(symX + b[6])
     # Create symbolic hiperbolic tangent and its second derivative function
     sym_tanh_deriv1 = sym.diff(sym_tanh, symX, 1)
     sym_tanh_deriv2 = sym.diff(sym_tanh, symX, 2)
@@ -70,9 +69,11 @@ def extractModelParameters(tanhModel):
     # This is actually cheating! Because the root is always in a[ii]!
     np_tanh_deriv2_zeros = np.asarray(b)
     codebook = {}
-    for ii in range(0, np_tanh_deriv2_zeros.size):
+    codebook[np_tanh_deriv2_zeros[0]] = np_tanh((3*np_tanh_deriv2_zeros[0] - np_tanh_deriv2_zeros[1])/2)
+    codebook[extraKey] = np_tanh((3*np_tanh_deriv2_zeros[np_tanh_deriv2_zeros.size - 1] - np_tanh_deriv2_zeros[np_tanh_deriv2_zeros.size - 2])/2)
+    for ii in range(1, np_tanh_deriv2_zeros.size):
         key = np_tanh_deriv2_zeros[ii]
-        val = np_tanh(np_tanh_deriv2_zeros[ii])
+        val = np_tanh((np_tanh_deriv2_zeros[ii] - np_tanh_deriv2_zeros[ii - 1])/2)
         codebook[key] = val
     print('Relevant zeros of the second derivative:\n', np_tanh_deriv2_zeros)
     # Plot
@@ -88,7 +89,12 @@ def extractModelParameters(tanhModel):
 def QuantizeWithDict(input, codebook):
     codebookKeys = list(codebook.keys())
     codebookKeys = sorted(codebookKeys)
-    qunatized_input = UniformQuantizer.get_optimal_word(input,
-                                                        tuple(codebookKeys))
-    qunatized_input = qunatized_input[1]
-    return qunatized_input
+    if codebookKeys[0] > input:
+        return codebook[codebookKeys[0]]
+    if codebookKeys[-2] < input:
+        return codebook[codebookKeys[-1]]
+    for ii in range (1, len(codebookKeys) - 1):
+        if codebookKeys[ii - 1] < input and input < codebookKeys[ii]:
+            return codebook[codebookKeys[ii]]
+    print("No available return value")
+    return -1

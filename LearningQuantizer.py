@@ -138,7 +138,7 @@ class LearningTanhModule(Module):
         super(LearningTanhModule, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
-        self.weight = Parameter(torch.Tensor(2*M, 1))
+        self.weight = Parameter(torch.Tensor(2*(M - 1), 1))
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -149,7 +149,7 @@ class LearningTanhModule(Module):
         ret = torch.zeros(input.size())
         for ii in range(0, input.size(0)):
             for jj in range(0, input.size(1)):
-                for kk in range(0, M):
+                for kk in range(0, M - 1):
                     ret[ii, jj] += self.weight[kk*2, 0] * \
                         torch.tanh(input[ii, jj] + self.weight[2*kk+1, 0])
         return ret
