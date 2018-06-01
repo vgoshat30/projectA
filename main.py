@@ -23,7 +23,7 @@ from projectConstants import *
 import UniformQuantizer
 import Logger as log
 import UserInterface as UI
-
+import TanhToStep
 
 def train(modelname, epoch, model, optimizer):
     for corrEpoch in range(0, epoch):
@@ -116,6 +116,27 @@ def test(model):
 
     test_loss /= (len(testLoader.dataset)/BATCH_SIZE)
 
+    return test_loss.detach().numpy()
+
+def testTanh(model):
+    codebook = TanhToStep.extractModelParameters(model)
+    test_loss = 0
+    for batch_idx, (data, target) in enumerate(testLoader):
+        data, target = Variable(data.float()), Variable(target.float())
+        output = model.l1(data)
+        output = model.l2(output)
+        output_data = output.data
+        output_numpy = output_data.numpy()
+        for ii in range(0, output_data.size(0)):
+            for jj in range(0, output_data.size(1)):
+                output[ii][jj] = TanhToStep.QuantizeWithDict(output_numpy[ii][jj], codebook)
+        output = model.l3(output)
+        output = model.l4(output)
+        output = model.l5(output)
+        # sum up batch loss
+        test_loss += criterion(output.view(-1, 1), target.view(-1, 1))
+
+    test_loss /= (len(testLoader.dataset)/BATCH_SIZE)
     return test_loss.detach().numpy()
 
 
@@ -297,7 +318,7 @@ if 'LSTM sign quantization' in modelsToActivate:
 if 'Tanh quantization' in modelsToActivate:
     modelname = 'Tanh quantization'
     UI.testMessage(modelname)
-    model_tanhQuantize_loss = test(model_tanhQuantize)
+    model_tanhQuantize_loss = testTanh(model_tanhQuantize)
     UI.testResults(QUANTIZATION_RATE, model_tanhQuantize_loss)
     log.log(QUANTIZATION_RATE, model_tanhQuantize_loss,
             algorithm=modelname,

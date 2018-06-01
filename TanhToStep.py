@@ -52,13 +52,13 @@ def extractModelParameters(tanhModel):
     # Find the wanted zero of the second derivative of tanh
     # IMPORTANT!!!
     # This is actually cheating! Because the root is always in a[ii]!
-    np_tanh_deriv2_zeros = optim.newton(np_tanh_deriv2, -a[0])
+    np_tanh_deriv2_zeros = optim.newton(np_tanh_deriv2, -b[0])
     for ii, value in enumerate(b):
         if ii is not 0:
             np_tanh_deriv2_zeros = np.append(np_tanh_deriv2_zeros,
                                              optim.newton(np_tanh_deriv2, -b[ii]))
     codebook = {}
-    for ii, value in enumerate(np_tanh_deriv2_zeros):
+    for __, value in enumerate(np_tanh_deriv2_zeros):
         codebook[value] = np_tanh(value)
 
     print('Relevant zeros of the second derivative:\n', np_tanh_deriv2_zeros)
@@ -68,3 +68,10 @@ def extractModelParameters(tanhModel):
     plt.plot(x, np_tanh_deriv2(x), color='green')
     plt.plot(np_tanh_deriv2_zeros, np_tanh(np_tanh_deriv2_zeros), 'x', color='red')
     plt.show()
+
+def QuantizeWithDict(input, codebook):
+    codebookKeys = list(codebook.keys())
+    codebookKeys = sorted(codebookKeys)
+    qunatized_input = UniformQuantizer.get_optimal_word(input, tuple(codebookKeys))
+    qunatized_input = codebook[qunatized_input]
+    return qunatized_input
