@@ -133,11 +133,13 @@ class LearningSOMFunction(torch.autograd.Function):
 
 
 class LearningTanhModule(Module):
-    def __init__(self, in_features, out_features):
+    def __init__(self, in_features, out_features, tanhSlope, M):
         super(LearningTanhModule, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
-        self.weight = Parameter(torch.Tensor(2*(M - 1), 1))
+        self.tanhSlope = tanhSlope
+        self.codebookSize = M
+        self.weight = Parameter(torch.Tensor(2*(self.codebookSize - 1), 1))
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -145,17 +147,16 @@ class LearningTanhModule(Module):
         self.weight.data.uniform_(-stdv, stdv)
 
     def forward(self, input):
-        tanhSlope = 100
         ret = torch.zeros(input.size())
         for ii in range(0, input.size(0)):
             for jj in range(0, input.size(1)):
-                for kk in range(0, M - 1):
+                for kk in range(0, self.codebookSize - 1):
                     ret[ii, jj] += self.weight[kk*2, 0] * \
-                        torch.tanh(tanhSlope * (input[ii, jj] +
+                        torch.tanh(self.tanhSlope * (input[ii, jj] +
                                                 self.weight[2*kk+1, 0]))
         return ret
 
     def extra_repr(self):
-        return 'in_features={}, out_features={}'.format(
-            self.in_features, self.out_features
+        return 'in_features={}, out_features={}, codebook_size={}'.format(
+            self.in_features, self.out_features, self.codebookSize
         )

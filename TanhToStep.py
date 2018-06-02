@@ -14,7 +14,7 @@ from random import random
 import Logger as log
 
 
-def extractModelParameters(tanhModel):
+def extractModelParameters(tanhModel, codebookSize):
     """Return the codebook extracted from tanhQuantizeNet instance
 
     Parameters
@@ -35,7 +35,7 @@ def extractModelParameters(tanhModel):
     # Coefficients of the tanh
     a = []
     b = []
-    for ii in range(0, M - 1):
+    for ii in range(0, codebookSize - 1):
         a.append(parameters[2*ii, 0])
         b.append(parameters[2*ii + 1, 0])
     extraKey = max(b) + 1
@@ -46,13 +46,19 @@ def extractModelParameters(tanhModel):
     # Create symbolic variable x
     symX = sym.symbols('x')
     # Probably should write a loop but was too lazy...
-    sym_tanh = a[0] * sym.tanh(symX + b[0]) + \
-        a[1] * sym.tanh(symX + b[1]) + \
-        a[2] * sym.tanh(symX + b[2]) + \
-        a[3] * sym.tanh(symX + b[3]) + \
-        a[4] * sym.tanh(symX + b[4]) + \
-        a[5] * sym.tanh(symX + b[5]) + \
-        a[6] * sym.tanh(symX + b[6])
+
+    # sym_tanh = a[0] * sym.tanh(symX + b[0]) + \
+    #     a[1] * sym.tanh(symX + b[1]) + \
+    #     a[2] * sym.tanh(symX + b[2]) + \
+    #     a[3] * sym.tanh(symX + b[3]) + \
+    #     a[4] * sym.tanh(symX + b[4]) + \
+    #     a[5] * sym.tanh(symX + b[5]) + \
+    #     a[6] * sym.tanh(symX + b[6])
+
+    # GOSHA MAKE THIS HAPPAN (THE FOR LOOP)
+    sym_tanh = a[0] * sym.tanh(symX + b[0])
+    for ii in range(0,codebookSize - 1):
+        sym_tanh = sym_tanh + a[ii] * sym.tanh(symX + b[ii])
     # Create symbolic hiperbolic tangent and its second derivative function
     sym_tanh_deriv1 = sym.diff(sym_tanh, symX, 1)
     sym_tanh_deriv2 = sym.diff(sym_tanh, symX, 2)
@@ -67,12 +73,12 @@ def extractModelParameters(tanhModel):
     return f, a, b, infVal
 
 
-def QuantizeTanh(input, f, borders, infVal):
+def QuantizeTanh(input, f, borders, infVal, codebookSize):
     borders.sort()
     if input <= borders[0]:
         return -infVal, 0
     if input > borders[-1]:
-        return infVal, M - 1
+        return infVal, codebookSize - 1
     for ii in range(0, len(borders) - 1):
         if borders[ii] < input and input <= borders[ii + 1]:
             return f((borders[ii + 1] + borders[ii])/2), ii + 1

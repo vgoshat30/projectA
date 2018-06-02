@@ -5,6 +5,8 @@
     -- Uniform quantization Linear network
     -- Sign qunatization Linear + RNN network
     -- Sign qunatization Linear + LSTM network
+    -- Tanh learning quantization Linear networks
+    -- Strached tanh learning quantization Linear networks
 """
 
 import torch
@@ -14,6 +16,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch.autograd import Variable
 import scipy.io as sio
 import numpy as np
+import math
 from datetime import datetime
 
 from dataLoader import *
@@ -26,9 +29,11 @@ import userInterface as UI
 import TanhToStep
 
 
-def train(modelname, epoch, model, optimizer):
+def train(modelname, epoch, model, optimizer, scheduler=None):
+    model.train()
     for corrEpoch in range(0, epoch):
-        model.train()
+        if scheduler != None:
+            scheduler.step()
         for batch_idx, (data, target) in enumerate(trainLoader):
             data, target = Variable(data.float()), Variable(target.float())
 
@@ -120,9 +125,9 @@ def test(model):
     return test_loss.detach().numpy()
 
 
-def testTanh(model):
-    f, a, b, infVal = TanhToStep.extractModelParameters(model)
-    classificationCounter = np.zeros(M)
+def testTanh(model, codebookSize):
+    f, a, b, infVal = TanhToStep.extractModelParameters(model, codebookSize)
+    classificationCounter = np.zeros(codebookSize)
     test_loss = 0
     for batch_idx, (data, target) in enumerate(testLoader):
         data, target = Variable(data.float()), Variable(target.float())
@@ -133,7 +138,7 @@ def testTanh(model):
         for ii in range(0, output_data.size(0)):
             for jj in range(0, output_data.size(1)):
                 output[ii, jj], kk = TanhToStep.QuantizeTanh(
-                    output_numpy[ii, jj], f, b, infVal)
+                    output_numpy[ii, jj], f, b, infVal, codebookSize)
                 classificationCounter[kk] += 1
         output = model.l3(output)
         output = model.l4(output)
@@ -156,6 +161,12 @@ def justQuantize(input, codebook):
                 input_numpy[ii, jj], codebook)
     return qunatized_input
 
+# responsible for the learning rate decay
+def lambda_linUniformQunat(epoch): return 0.8 ** epoch
+
+def lambda_linAnalogSign(epoch): return 0.1 ** epoch
+
+def lambda_linDigitalSign(epoch): return 0.1 ** epoch
 
 # Get the class containing the train data from dataLoader.py
 trainData = ShlezDatasetTrain()
@@ -165,81 +176,78 @@ trainLoader = DataLoader(dataset=trainData, batch_size=BATCH_SIZE, shuffle=True)
 testData = ShlezDatasetTest()
 testLoader = DataLoader(dataset=testData, batch_size=BATCH_SIZE, shuffle=True)
 
-# Generate uniform codebooks
-X_codebook = UniformQuantizer.codebook_uniform(trainData.X_var, M)
-S_codebook = UniformQuantizer.codebook_uniform(trainData.S_var, M)
-# model_linSignQunat: Basic linear network with sign activation as the
-# quantization
-model_linSignQunat = linearModels.SignQuantizerNet()
-# model_linUniformQunat: Basic linear network with uniform quantization instead
-# of sign
-model_linUniformQunat = linearModels.UniformQuantizerNet(S_codebook)
-# model_linAnalogSign: Basic linear network which learns to prepare the analog
-# signal data for quantization
-model_linAnalogSign = linearModels.AnalogProcessNet()
-# model_linDigitalSign: Basic linear network which learns to perform the digital
-# processing after the quantization and results the channel coefficients
-model_linDigitalSign = linearModels.DigitalProcessNet()
-# Replacing quantizer with sum of tanh function for the learning:
-model_tanhQuantize = linearModels.tanhQuantizeNet()
-
-
-# model_rnnSignQuant: Basic linear network with sign activation and
-# pre-quantization RNN layer
-model_rnnSignQuant = RNNmodels.SignQuantizerNetRNN()
-# model_lstmSignQuant: Basic linear network with sign activation and
-# pre-quantization LSTM layer
-model_lstmSignQuant = RNNmodels.SignQuantizerNetLSTM()
-
-
-criterion = nn.MSELoss()
-optimizer_linSignQunat = optim.SGD(model_linSignQunat.parameters(),
-                                   lr=0.01, momentum=0.5)
-optimizer_linUniformQunat = optim.SGD(model_linUniformQunat.parameters(),
-                                      lr=0.01, momentum=0.5)
-optimizer_linAnalogSign = optim.SGD(model_linAnalogSign.parameters(),
-                                    lr=0.01, momentum=0.5)
-optimizer_linDigitalSign = optim.SGD(model_linDigitalSign.parameters(),
-                                     lr=0.01, momentum=0.5)
-optimizer_rnnSignQuant = optim.SGD(model_rnnSignQuant.parameters(),
-                                   lr=0.01, momentum=0.5)
-optimizer_lstmSignQuant = optim.SGD(model_lstmSignQuant.parameters(),
-                                    lr=0.01, momentum=0.5)
-optimizer_tanhQuantize = optim.SGD(model_tanhQuantize.parameters(),
-                                   lr=0.01, momentum=0.5)
-
-
-# responsible for the learning rate decay
-def lambda_linUniformQunat(epoch): return 0.8 ** epoch
-
-
-scheduler_linUniformQunat = optim.lr_scheduler.LambdaLR(
-    optimizer_linUniformQunat, lr_lambda=lambda_linUniformQunat)
-
-
-def lambda_linAnalogSign(epoch): return 0.1 ** epoch
-
-
-scheduler_linAnalogSign = optim.lr_scheduler.LambdaLR(
-    optimizer_linAnalogSign, lr_lambda=lambda_linAnalogSign)
-
-
-def lambda_linDigitalSign(epoch): return 0.1 ** epoch
-
-
-scheduler_linDigitalSign = optim.lr_scheduler.LambdaLR(
-    optimizer_linDigitalSign, lr_lambda=lambda_linDigitalSign)
 
 
 ########################################################################
-###               Training and testing all networks                  ###
+###                     Model initilizations                         ###
 ########################################################################
+constantPermutationns = [(slope, epoch, lr, codebookSize) for slope in SLOPE_RANGE for epoch in EPOCH_RANGE for lr in LR_RANGE for codebookSize in M_RANGE]
+for constPerm in constantPermutationns:
+    slope = constPerm[0]
+    epoch = constPerm[1]
+    lr = constPerm[2]
+    codebookSize = constPerm[3]
+    QUANTIZATION_RATE = math.log2(codebookSize)*OUTPUT_DIMENSION / INPUT_DIMENSION
 
-# ------------------------------
-# ---       Training         ---
-# ------------------------------
+    # Generate uniform codebooks
+    X_codebook = UniformQuantizer.codebook_uniform(trainData.X_var, codebookSize)
+    S_codebook = UniformQuantizer.codebook_uniform(trainData.S_var, codebookSize)
 
-for EPOCHS_tanhQuantize in [2]:
+    # model_linSignQunat: Basic linear network with sign activation as the
+    # quantization
+    model_linSignQunat = linearModels.SignQuantizerNet()
+    # model_linUniformQunat: Basic linear network with uniform quantization instead
+    # of sign
+    model_linUniformQunat = linearModels.UniformQuantizerNet(S_codebook)
+    # model_linAnalogSign: Basic linear network which learns to prepare the analog
+    # signal data for quantization
+    model_linAnalogSign = linearModels.AnalogProcessNet()
+    # model_linDigitalSign: Basic linear network which learns to perform the digital
+    # processing after the quantization and results the channel coefficients
+    model_linDigitalSign = linearModels.DigitalProcessNet()
+    # Replacing quantizer with sum of tanh function for the learning:
+    model_tanhQuantize = linearModels.tanhQuantizeNet(tanhSlope=slope, codebookSize=codebookSize)
+
+    model_strachTanhQuantize = linearModels.StrachedtanhQuantizeNet(tanhSlope=slope, codebookSize=codebookSize, strachFactor=10)
+    # model_rnnSignQuant: Basic linear network with sign activation and
+    # pre-quantization RNN layer
+    model_rnnSignQuant = RNNmodels.SignQuantizerNetRNN()
+    # model_lstmSignQuant: Basic linear network with sign activation and
+    # pre-quantization LSTM layer
+    model_lstmSignQuant = RNNmodels.SignQuantizerNetLSTM()
+
+
+
+    criterion = nn.MSELoss()
+    optimizer_linSignQunat = optim.SGD(model_linSignQunat.parameters(),
+                                       lr=lr, momentum=0.5)
+    optimizer_linUniformQunat = optim.SGD(model_linUniformQunat.parameters(),
+                                          lr=lr, momentum=0.5)
+    optimizer_linAnalogSign = optim.SGD(model_linAnalogSign.parameters(),
+                                        lr=lr, momentum=0.5)
+    optimizer_linDigitalSign = optim.SGD(model_linDigitalSign.parameters(),
+                                         lr=lr, momentum=0.5)
+    optimizer_rnnSignQuant = optim.SGD(model_rnnSignQuant.parameters(),
+                                       lr=lr, momentum=0.5)
+    optimizer_lstmSignQuant = optim.SGD(model_lstmSignQuant.parameters(),
+                                        lr=lr, momentum=0.5)
+    optimizer_tanhQuantize = optim.SGD(model_tanhQuantize.parameters(),
+                                       lr=lr, momentum=0.5)
+    optimizer_strachTanhQuantize = optim.SGD(model_strachTanhQuantize.parameters(),
+                                       lr=lr, momentum=0.5)
+    scheduler_linUniformQunat = optim.lr_scheduler.ExponentialLR(optimizer_linUniformQunat, gamma=0.7, last_epoch=-1)
+    scheduler_tanhQuantize = optim.lr_scheduler.ExponentialLR(optimizer_tanhQuantize, gamma=0.7, last_epoch=-1)
+    scheduler_strachTanhQuantize = optim.lr_scheduler.ExponentialLR(optimizer_strachTanhQuantize, gamma=0.7, last_epoch=-1)
+
+
+    ########################################################################
+    ###               Training and testing all networks                  ###
+    ########################################################################
+
+    # ------------------------------
+    # ---       Training         ---
+    # ------------------------------
+
 
     UI.trainHeding()
 
@@ -256,9 +264,7 @@ for EPOCHS_tanhQuantize in [2]:
         modelname = 'Linear uniform codebook'
         UI.trainMessage(modelname)
         train(modelname, EPOCHS_linUniformQunat, model_linUniformQunat,
-              optimizer_linUniformQunat)
-        # step the learning rate decay
-        scheduler_linUniformQunat.step()
+              optimizer_linUniformQunat, scheduler_linUniformQunat)
         model_linUniformQunat_runtime = datetime.now() - \
             model_linUniformQunat_runtime
 
@@ -276,8 +282,6 @@ for EPOCHS_tanhQuantize in [2]:
                            model_linDigitalSign,
                            optimizer_linAnalogSign, optimizer_linDigitalSign,
                            S_codebook)
-        # step the learning rate decay
-        scheduler_linDigitalSign.step()
 
     if 'RNN sign quantization' in modelsToActivate:
         modelname = 'RNN sign quantization'
@@ -295,9 +299,18 @@ for EPOCHS_tanhQuantize in [2]:
         modelname = 'Tanh quantization'
         UI.trainMessage(modelname)
         model_tanhQuantize_runtime = datetime.now()
-        train(modelname, EPOCHS_tanhQuantize, model_tanhQuantize,
-              optimizer_tanhQuantize)
+        train(modelname, epoch, model_tanhQuantize,
+              optimizer_tanhQuantize, scheduler_tanhQuantize)
         model_tanhQuantize_runtime = datetime.now() - model_tanhQuantize_runtime
+
+    if 'Strached Tanh quantization' in modelsToActivate:
+        modelname = 'Strached Tanh quantization'
+        UI.trainMessage(modelname)
+        model_strachTanhQuantize_runtime = datetime.now()
+        train(modelname, epoch, model_strachTanhQuantize,
+              optimizer_strachTanhQuantize, scheduler_strachTanhQuantize)
+        model_strachTanhQuantize_runtime = datetime.now() - model_strachTanhQuantize_runtime
+
 
     # ------------------------------
     # ---        Testing         ---
@@ -346,4 +359,15 @@ for EPOCHS_tanhQuantize in [2]:
         log.log(QUANTIZATION_RATE, model_tanhQuantize_loss, 'dontshow',
                 algorithm=modelname,
                 runtime=model_tanhQuantize_runtime,
-                epochs=EPOCHS_tanhQuantize)
+                epochs=epoch)
+                # GOSHA NEED TO ADD slope=slope
+    if 'Strached Tanh quantization' in modelsToActivate:
+        modelname = 'Strached Tanh quantization'
+        UI.testMessage(modelname)
+        model_strachTanhQuantize_loss = testTanh(model_strachTanhQuantize)
+        UI.testResults(QUANTIZATION_RATE, model_strachTanhQuantize_loss)
+        log.log(QUANTIZATION_RATE, model_strachTanhQuantize_loss, 'dontshow',
+                algorithm=modelname,
+                runtime=model_strachTanhQuantize_runtime,
+                epochs=epoch)
+                # GOSHA NEED TO ADD slope=slope
