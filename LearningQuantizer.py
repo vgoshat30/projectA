@@ -133,7 +133,6 @@ class LearningSOMFunction(torch.autograd.Function):
 
 
 class LearningTanhModule(Module):
-
     def __init__(self, in_features, out_features):
         super(LearningTanhModule, self).__init__()
         self.in_features = in_features
@@ -146,12 +145,14 @@ class LearningTanhModule(Module):
         self.weight.data.uniform_(-stdv, stdv)
 
     def forward(self, input):
+        tanhSlope = 100
         ret = torch.zeros(input.size())
         for ii in range(0, input.size(0)):
             for jj in range(0, input.size(1)):
                 for kk in range(0, M - 1):
                     ret[ii, jj] += self.weight[kk*2, 0] * \
-                        torch.tanh(input[ii, jj] + self.weight[2*kk+1, 0])
+                        torch.tanh(tanhSlope * (input[ii, jj] +
+                                                self.weight[2*kk+1, 0]))
         return ret
 
     def extra_repr(self):

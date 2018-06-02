@@ -14,10 +14,10 @@ from TanhToStep import QuantizeTanh
 
 
 # Coefficients of the tanh
-a = [0.61832136, 1.1391762, 0.2488268, 1.4357071, 1.6707542, 0.12944213, 1.2324758]
-b = [0.21479227, 1.2251697, 0.2885009, 0.92580044, -0.9657938, 0.44270614, -1.2941284]
+a = [-0.6450403, -1.0656009, -0.78059906, -1.2263683, -1.9039588, -1.9144812, -0.10208344]
+b = [0.16478617, 0.99923134, -0.080281906, -0.98418796, -1.8564541, 1.8370808, 0.40390304]
 # X axis limit
-xlim = [-3, 3]
+xlim = [-10, 10]
 # Number of points in the graph
 resolution = 10000
 slope = 100
@@ -31,16 +31,15 @@ sym_tanh = a[0] * sym.tanh(symX + b[0]) + \
     a[4] * sym.tanh(slope * (symX + b[4])) + \
     a[5] * sym.tanh(slope * (symX + b[5])) + \
     a[6] * sym.tanh(slope * (symX + b[6]))
-# Create symbolic hiperbolic tangent and its second derivative function
-sym_tanh_deriv1 = sym.diff(sym_tanh, symX, 1)
-sym_tanh_deriv2 = sym.diff(sym_tanh, symX, 2)
 # Convert the symbolic functions to numpy friendly (for substitution)
 np_tanh = sym.lambdify(symX, sym_tanh, "numpy")
-np_tanh_deriv1 = sym.lambdify(symX, sym_tanh_deriv1, "numpy")
-np_tanh_deriv2 = sym.lambdify(symX, sym_tanh_deriv2, "numpy")
-# Plot
+# Create avector of the quantize function
+quantized = []
 x = np.linspace(xlim[0], xlim[1], num=resolution)
-plt.plot(x, np_tanh(x))
-# plt.plot(x, np_tanh_deriv2(x), color='green')
-# plt.plot(x, QuantizeTanh(x, sym_tanh, b, sum(a)))
+for ii in range(0, np.size(x)):
+    quantized.append(QuantizeTanh(x[ii], np_tanh, b, sum(a))[0])
+# Plot
+plt.plot(x, np_tanh(x), label='Sum of tanh')
+plt.plot(x, quantized, label='Quantization function')
+plt.legend()
 plt.show()

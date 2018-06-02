@@ -28,7 +28,8 @@ indexAlpha = 0.5
 datatipAlpha = 1
 dataTipFontsize = 6
 textboxAlpha = 0.8
-textOffset = 0.015
+textOffset = 0.0005
+tickOffset = 0.001
 sizeOfFigure = (8, 5)  # in inches
 
 # Define which lines to plot
@@ -59,33 +60,6 @@ chosenMarker = 'o'
 chosenColor = 'red'
 tooltipBoxStyle = 'round'
 tooltipBoxColor = 'wheat'
-
-
-def reandomTickPos(x, y):
-    """Add a random position "noise" to a test number attached to a point
-
-    Parameters
-    ----------
-    x: numpy.float64
-        X position of a test log(rate)
-    y: numpy.float64
-        Y position of a test log(average loss)
-
-    Returns
-    -------
-    (X_new, Y_new): tuple
-        The input X and Y arguments, with added noise
-    """
-
-    noise = 0.03
-    bias = 0.4
-    randX = 2*random.random() - 1
-    while abs(randX) < bias:
-        randX = 2*random.random() - 1
-    randY = 2*random.random() - 1
-    while abs(randY) < bias:
-        randY = 2*random.random() - 1
-    return x+noise*randX, y+noise*randY
 
 
 def removeCellFormat(formatted):
@@ -377,8 +351,8 @@ def log(rate=None, error=None, *handleMethod, **kwargs):
         textBoxes = []
         for ii in range(0, rateResults.shape[1]):
             # Enumerate result points in the figure
-            indexText.append(ax.text(*reandomTickPos(rateResults[0, ii],
-                                                     errorResults[0, ii]),
+            indexText.append(ax.text(rateResults[0, ii] + tickOffset,
+                                     errorResults[0, ii] + tickOffset,
                                      ii+1, fontsize=8, alpha=indexAlpha,
                                      verticalalignment='center',
                                      horizontalalignment='center'))
@@ -431,7 +405,8 @@ def log(rate=None, error=None, *handleMethod, **kwargs):
         if not((rate is None)) and not((error is None)):
             # Last result index text
             lastResultIndex = rateResults.shape[1]
-            indexText.append(ax.text(*reandomTickPos(rate, error),
+            indexText.append(ax.text(rate + tickOffset,
+                                     error + tickOffset,
                                      lastResultIndex+1,
                                      fontsize=8, alpha=indexAlpha,
                                      verticalalignment='center',
@@ -515,7 +490,7 @@ def delete(test=None):
         >>> log.log(0.4, 0.5, 'dontshow')
         Saved result of test number 4
         >>> log.delete(4)
-        Deleted test nuber 4
+        Deleted test number 4
         >>> log.delete((1, 3))
         Deleted tests: (1, 3)
         >>> log.delete()
@@ -545,7 +520,7 @@ def delete(test=None):
             print('Deleted tests:', test)
         else:
             testIndex = test - 1
-            print('Deleted test nuber', test)
+            print('Deleted test number', test)
 
         rateResults = np.delete(rateResults, testIndex, 1)
         errorResults = np.delete(errorResults, testIndex, 1)

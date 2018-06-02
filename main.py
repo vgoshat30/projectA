@@ -22,7 +22,7 @@ import RNNmodels
 from projectConstants import *
 import UniformQuantizer
 import Logger as log
-import UserInterface as UI
+import userInterface as UI
 import TanhToStep
 
 
@@ -239,7 +239,7 @@ scheduler_linDigitalSign = optim.lr_scheduler.LambdaLR(
 # ---       Training         ---
 # ------------------------------
 
-for EPOCHS_tanhQuantize in [5, 7, 10]:
+for EPOCHS_tanhQuantize in [2]:
 
     UI.trainHeding()
 
@@ -343,7 +343,7 @@ for EPOCHS_tanhQuantize in [5, 7, 10]:
         UI.testMessage(modelname)
         model_tanhQuantize_loss = testTanh(model_tanhQuantize)
         UI.testResults(QUANTIZATION_RATE, model_tanhQuantize_loss)
-        log.log(QUANTIZATION_RATE, model_tanhQuantize_loss,
+        log.log(QUANTIZATION_RATE, model_tanhQuantize_loss, 'dontshow',
                 algorithm=modelname,
                 runtime=model_tanhQuantize_runtime,
                 epochs=EPOCHS_tanhQuantize)
