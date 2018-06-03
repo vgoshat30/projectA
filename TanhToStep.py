@@ -45,19 +45,9 @@ def extractModelParameters(tanhModel, codebookSize):
     resolution = 1000
     # Create symbolic variable x
     symX = sym.symbols('x')
-    # Probably should write a loop but was too lazy...
 
-    # sym_tanh = a[0] * sym.tanh(symX + b[0]) + \
-    #     a[1] * sym.tanh(symX + b[1]) + \
-    #     a[2] * sym.tanh(symX + b[2]) + \
-    #     a[3] * sym.tanh(symX + b[3]) + \
-    #     a[4] * sym.tanh(symX + b[4]) + \
-    #     a[5] * sym.tanh(symX + b[5]) + \
-    #     a[6] * sym.tanh(symX + b[6])
-
-    # GOSHA MAKE THIS HAPPAN (THE FOR LOOP)
     sym_tanh = a[0] * sym.tanh(symX + b[0])
-    for ii in range(0,codebookSize - 1):
+    for ii in range(1, codebookSize - 1):
         sym_tanh = sym_tanh + a[ii] * sym.tanh(symX + b[ii])
     # Create symbolic hiperbolic tangent and its second derivative function
     sym_tanh_deriv1 = sym.diff(sym_tanh, symX, 1)

@@ -52,7 +52,7 @@ def get_optimal_word(input, codebook):
         return qunatized_word, codewordIdx
     for ii in range(0, len(codebook) - 1):
         if(input > codebook[ii] and input < codebook[ii + 1]):
-            if input <= ((codebook[ii + 1] - codebook[ii])/2):
+            if input <= ((codebook[ii + 1] + codebook[ii])/2):
                 qunatized_word = codebook[ii]
                 codewordIdx = ii
             else:

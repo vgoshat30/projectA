@@ -150,6 +150,33 @@ def testTanh(model, codebookSize):
     test_loss /= (len(testLoader.dataset)/BATCH_SIZE)
     return test_loss.detach().numpy()
 
+def testStretchedTanh(model, codebookSize, stretchFactor):
+    f, a, b, infVal = TanhToStep.extractModelParameters(model, codebookSize)
+    classificationCounter = np.zeros(codebookSize)
+    test_loss = 0
+    for batch_idx, (data, target) in enumerate(testLoader):
+        data, target = Variable(data.float()), Variable(target.float())
+        output = model.l1(data)
+        output = model.l2(output)
+        output = stretchFactor*output
+        output_data = output.data
+        output_numpy = output_data.numpy()
+        for ii in range(0, output_data.size(0)):
+            for jj in range(0, output_data.size(1)):
+                output[ii, jj], kk = TanhToStep.QuantizeTanh(
+                    output_numpy[ii, jj], f, b, infVal, codebookSize)
+                classificationCounter[kk] += 1
+        output = (1/stretchFactor)*output
+        output = model.l3(output)
+        output = model.l4(output)
+        output = model.l5(output)
+        # sum up batch loss
+        test_loss += criterion(output.view(-1, 1), target.view(-1, 1))
+
+    print('Num. of clasifications by word:', classificationCounter)
+    test_loss /= (len(testLoader.dataset)/BATCH_SIZE)
+    return test_loss.detach().numpy()
+
 
 def justQuantize(input, codebook):
     input_data = input.data
@@ -208,7 +235,7 @@ for constPerm in constantPermutationns:
     # Replacing quantizer with sum of tanh function for the learning:
     model_tanhQuantize = linearModels.tanhQuantizeNet(tanhSlope=slope, codebookSize=codebookSize)
 
-    model_strachTanhQuantize = linearModels.StrachedtanhQuantizeNet(tanhSlope=slope, codebookSize=codebookSize, strachFactor=10)
+    model_stretchTanhQuantize = linearModels.StretchedtanhQuantizeNet(tanhSlope=slope, codebookSize=codebookSize, stretchFactor=5)
     # model_rnnSignQuant: Basic linear network with sign activation and
     # pre-quantization RNN layer
     model_rnnSignQuant = RNNmodels.SignQuantizerNetRNN()
@@ -233,11 +260,11 @@ for constPerm in constantPermutationns:
                                         lr=lr, momentum=0.5)
     optimizer_tanhQuantize = optim.SGD(model_tanhQuantize.parameters(),
                                        lr=lr, momentum=0.5)
-    optimizer_strachTanhQuantize = optim.SGD(model_strachTanhQuantize.parameters(),
+    optimizer_stretchTanhQuantize = optim.SGD(model_stretchTanhQuantize.parameters(),
                                        lr=lr, momentum=0.5)
     scheduler_linUniformQunat = optim.lr_scheduler.ExponentialLR(optimizer_linUniformQunat, gamma=0.7, last_epoch=-1)
     scheduler_tanhQuantize = optim.lr_scheduler.ExponentialLR(optimizer_tanhQuantize, gamma=0.7, last_epoch=-1)
-    scheduler_strachTanhQuantize = optim.lr_scheduler.ExponentialLR(optimizer_strachTanhQuantize, gamma=0.7, last_epoch=-1)
+    scheduler_stretchTanhQuantize = optim.lr_scheduler.ExponentialLR(optimizer_stretchTanhQuantize, gamma=0.7, last_epoch=-1)
 
 
     ########################################################################
@@ -251,48 +278,48 @@ for constPerm in constantPermutationns:
 
     UI.trainHeding()
 
-    if 'Linear sign quantization' in modelsToActivate:
+    if 'Linear sign quantization' in modelsToActivate and slope == SLOPE_RANGE[0]:
         model_linSignQunat_runtime = datetime.now()
         modelname = 'Linear sign quantization'
         UI.trainMessage(modelname)
-        train(modelname, EPOCHS_linSignQunat, model_linSignQunat,
+        train(modelname, epoch, model_linSignQunat,
               optimizer_linSignQunat)
         model_linSignQunat_runtime = datetime.now() - model_linSignQunat_runtime
 
-    if 'Linear uniform codebook' in modelsToActivate:
+    if 'Linear uniform codebook' in modelsToActivate and slope == SLOPE_RANGE[0]:
         model_linUniformQunat_runtime = datetime.now()
         modelname = 'Linear uniform codebook'
         UI.trainMessage(modelname)
-        train(modelname, EPOCHS_linUniformQunat, model_linUniformQunat,
+        train(modelname, epoch, model_linUniformQunat,
               optimizer_linUniformQunat, scheduler_linUniformQunat)
         model_linUniformQunat_runtime = datetime.now() - \
             model_linUniformQunat_runtime
 
-    if 'Linear SOM learning codebook' in modelsToActivate:
+    if 'Linear SOM learning codebook' in modelsToActivate and slope == SLOPE_RANGE[0]:
         model_linSOMQuant_runtime = datetime.now()
         modelname = 'Linear SOM learning codebook'
         UI.trainMessage(modelname)
-        model_SOM = trainSOM(modelname, EPOCHS_linSOMQuant, S_codebook)
+        model_SOM = trainSOM(modelname, epoch, S_codebook)
         model_linSOMQuant_runtime = datetime.now() - model_linSOMQuant_runtime
 
-    if 'Analog sign quantization' in modelsToActivate:
+    if 'Analog sign quantization' in modelsToActivate and slope == SLOPE_RANGE[0]:
         modelname = 'Analog sign quantization'
         UI.trainMessage(modelname)
-        trainAnalogDigital(modelname, EPOCHS_ADSignQuant, model_linAnalogSign,
+        trainAnalogDigital(modelname, epoch, model_linAnalogSign,
                            model_linDigitalSign,
                            optimizer_linAnalogSign, optimizer_linDigitalSign,
                            S_codebook)
 
-    if 'RNN sign quantization' in modelsToActivate:
+    if 'RNN sign quantization' in modelsToActivate and slope == SLOPE_RANGE[0]:
         modelname = 'RNN sign quantization'
         UI.trainMessage(modelname)
-        train(modelname, EPOCHS_rnnSignQuant, model_rnnSignQuant,
+        train(modelname, epoch, model_rnnSignQuant,
               optimizer_rnnSignQuant)
 
-    if 'LSTM sign quantization' in modelsToActivate:
+    if 'LSTM sign quantization' in modelsToActivate and slope == SLOPE_RANGE[0]:
         modelname = 'LSTM sign quantization'
         UI.trainMessage(modelname)
-        train(modelname, EPOCHS_lstmSignQuant, model_lstmSignQuant,
+        train(modelname, epoch, model_lstmSignQuant,
               optimizer_lstmSignQuant)
 
     if 'Tanh quantization' in modelsToActivate:
@@ -303,13 +330,13 @@ for constPerm in constantPermutationns:
               optimizer_tanhQuantize, scheduler_tanhQuantize)
         model_tanhQuantize_runtime = datetime.now() - model_tanhQuantize_runtime
 
-    if 'Strached Tanh quantization' in modelsToActivate:
-        modelname = 'Strached Tanh quantization'
+    if 'Stretched Tanh quantization' in modelsToActivate:
+        modelname = 'Stretched Tanh quantization'
         UI.trainMessage(modelname)
-        model_strachTanhQuantize_runtime = datetime.now()
-        train(modelname, epoch, model_strachTanhQuantize,
-              optimizer_strachTanhQuantize, scheduler_strachTanhQuantize)
-        model_strachTanhQuantize_runtime = datetime.now() - model_strachTanhQuantize_runtime
+        model_stretchTanhQuantize_runtime = datetime.now()
+        train(modelname, epoch, model_stretchTanhQuantize,
+              optimizer_stretchTanhQuantize, scheduler_stretchTanhQuantize)
+        model_stretchTanhQuantize_runtime = datetime.now() - model_stretchTanhQuantize_runtime
 
 
     # ------------------------------
@@ -318,7 +345,14 @@ for constPerm in constantPermutationns:
 
     UI.testHeding()
 
-    if 'Linear sign quantization' in modelsToActivate:
+    UI.horizontalLine()
+
+    print('PRINTING RESULTS UNDER THE FOLLOWING PARAMETERS:')
+    print('EPOCHS: ', epoch, '\nLEARNING RATE: ', lr, '\nM: ', codebookSize, '\nTANH SLOPE: ', slope)
+
+    UI.horizontalLine()
+
+    if 'Linear sign quantization' in modelsToActivate and slope == SLOPE_RANGE[0]:
         modelname = 'Linear sign quantization'
         UI.testMessage()
         model_linSignQunat_loss = test(model_linSignQunat)
@@ -327,7 +361,7 @@ for constPerm in constantPermutationns:
                 algorithm=modelname,
                 runtime=model_linSignQunat_runtime)
 
-    if 'Linear uniform codebook' in modelsToActivate:
+    if 'Linear uniform codebook' in modelsToActivate and slope == SLOPE_RANGE[0]:
         modelname = 'Linear uniform codebook'
         UI.testMessage(modelname)
         model_linUniformQunat_loss = test(model_linUniformQunat)
@@ -335,7 +369,7 @@ for constPerm in constantPermutationns:
                 algorithm=modelname,
                 runtime=model_linUniformQunat_runtime)
 
-    if 'Linear SOM learning codebook' in modelsToActivate:
+    if 'Linear SOM learning codebook' in modelsToActivate and slope == SLOPE_RANGE[0]:
         modelname = 'Linear SOM learning codebook'
         UI.testMessage()
         model_linSOMQuant_loss = test(model_SOM)
@@ -343,31 +377,31 @@ for constPerm in constantPermutationns:
                 algorithm=modelname,
                 runtime=model_linSOMQuant_runtime)
 
-    if 'RNN sign quantization' in modelsToActivate:
+    if 'RNN sign quantization' in modelsToActivate and slope == SLOPE_RANGE[0]:
         UI.testMessage('RNN sign quantization')
         test(model_rnnSignQuant)
 
-    if 'LSTM sign quantization' in modelsToActivate:
+    if 'LSTM sign quantization' in modelsToActivate and slope == SLOPE_RANGE[0]:
         UI.testMessage('LSTM sign quantization')
         test(model_lstmSignQuant)
 
     if 'Tanh quantization' in modelsToActivate:
         modelname = 'Tanh quantization'
         UI.testMessage(modelname)
-        model_tanhQuantize_loss = testTanh(model_tanhQuantize)
+        model_tanhQuantize_loss = testTanh(model_tanhQuantize, codebookSize)
         UI.testResults(QUANTIZATION_RATE, model_tanhQuantize_loss)
         log.log(QUANTIZATION_RATE, model_tanhQuantize_loss, 'dontshow',
                 algorithm=modelname,
                 runtime=model_tanhQuantize_runtime,
                 epochs=epoch)
                 # GOSHA NEED TO ADD slope=slope
-    if 'Strached Tanh quantization' in modelsToActivate:
-        modelname = 'Strached Tanh quantization'
+    if 'Stretched Tanh quantization' in modelsToActivate:
+        modelname = 'Stretched Tanh quantization'
         UI.testMessage(modelname)
-        model_strachTanhQuantize_loss = testTanh(model_strachTanhQuantize)
-        UI.testResults(QUANTIZATION_RATE, model_strachTanhQuantize_loss)
-        log.log(QUANTIZATION_RATE, model_strachTanhQuantize_loss, 'dontshow',
+        model_stretchTanhQuantize_loss = testStretchedTanh(model_stretchTanhQuantize, codebookSize, 5)
+        UI.testResults(QUANTIZATION_RATE, model_stretchTanhQuantize_loss)
+        log.log(QUANTIZATION_RATE, model_stretchTanhQuantize_loss, 'dontshow',
                 algorithm=modelname,
-                runtime=model_strachTanhQuantize_runtime,
+                runtime=model_stretchTanhQuantize_runtime,
                 epochs=epoch)
                 # GOSHA NEED TO ADD slope=slope

@@ -60,7 +60,7 @@ class QuantizationFunction(torch.autograd.Function):
         qunatized_input = torch.zeros(input.size())
         for ii in range(0, input_data.size(0)):
             for jj in range(0, input_data.size(1)):
-                qunatized_input[ii][jj], __ = UniformQuantizer.get_optimal_word(
+                qunatized_input[ii, jj], __ = UniformQuantizer.get_optimal_word(
                     input_numpy[ii, jj], codebook)
         return qunatized_input
 

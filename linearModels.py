@@ -151,11 +151,11 @@ class tanhQuantizeNet(nn.Module):
         x = self.l4(x)
         return self.l5(x)
 
-class StrachedtanhQuantizeNet(nn.Module):
+class StretchedtanhQuantizeNet(nn.Module):
 
-    def __init__(self, tanhSlope, codebookSize, strachFactor):
-        super(StrachedtanhQuantizeNet, self).__init__()
-        self.strachFactor = strachFactor
+    def __init__(self, tanhSlope, codebookSize, stretchFactor):
+        super(StretchedtanhQuantizeNet, self).__init__()
+        self.stretchFactor = stretchFactor
         self.l1 = nn.Linear(INPUT_DIMENSION, 520)
         # See Hardware-Limited Task-Based Quantization Proposion 3. for the
         # choice of output features
@@ -168,9 +168,9 @@ class StrachedtanhQuantizeNet(nn.Module):
     def forward(self, x):
         x = self.l1(x)
         x = self.l2(x)
-        x = self.strachFactor*x
+        x = self.stretchFactor*x
         x = self.q1(x)
-        x = (1/self.strachFactor)*x
+        x = (1/self.stretchFactor)*x
         x = self.l3(x)
         x = self.l4(x)
         return self.l5(x)
