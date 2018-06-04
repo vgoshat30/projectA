@@ -19,7 +19,7 @@ modelsToActivate = [
     # 'RNN sign quantization',
     # 'LSTM sign quantization',
     'Tanh quantization',
-    'Strached Tanh quantization'
+    'Stretched Tanh quantization'
 ]
 
 # ------------------------------

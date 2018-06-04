@@ -89,7 +89,7 @@ def trainAnalogDigital(modelname, epoch, modelAnalog, modelDigital,
                                   trainLoader, lossDigital)
 
 
-def trainSOM(modelname, epoch, initCodebook):
+def trainSOM(modelname, epoch, initCodebook, lr):
     print('Init Codebook:\n{0}'.format(initCodebook))
     newCodebook = list(initCodebook)
     for batch_idx, (data, target) in enumerate(trainLoader):
@@ -105,7 +105,7 @@ def trainSOM(modelname, epoch, initCodebook):
     testCodebook = tuple(newCodebook)
     print('SOM Codebook:\n{0}'.format(testCodebook))
     SOMtestModel = linearModels.UniformQuantizerNet(testCodebook)
-    SOMtestOptim = optim.SGD(SOMtestModel.parameters(), lr=0.01, momentum=0.5)
+    SOMtestOptim = optim.SGD(SOMtestModel.parameters(), lr=lr, momentum=0.5)
     train(modelname, epoch, SOMtestModel, SOMtestOptim)
     return SOMtestModel
 
@@ -299,7 +299,7 @@ for constPerm in constantPermutationns:
         model_linSOMQuant_runtime = datetime.now()
         modelname = 'Linear SOM learning codebook'
         UI.trainMessage(modelname)
-        model_SOM = trainSOM(modelname, epoch, S_codebook)
+        model_SOM = trainSOM(modelname, epoch, S_codebook, lr)
         model_linSOMQuant_runtime = datetime.now() - model_linSOMQuant_runtime
 
     if 'Analog sign quantization' in modelsToActivate and slope == SLOPE_RANGE[0]:
@@ -357,7 +357,7 @@ for constPerm in constantPermutationns:
         UI.testMessage()
         model_linSignQunat_loss = test(model_linSignQunat)
         UI.testResults(QUANTIZATION_RATE, model_linSignQunat_loss)
-        log.log(QUANTIZATION_RATE, model_linSignQunat_loss,
+        log.log(QUANTIZATION_RATE, model_linSignQunat_loss, 'dontshow',
                 algorithm=modelname,
                 runtime=model_linSignQunat_runtime)
 
@@ -365,7 +365,8 @@ for constPerm in constantPermutationns:
         modelname = 'Linear uniform codebook'
         UI.testMessage(modelname)
         model_linUniformQunat_loss = test(model_linUniformQunat)
-        log.log(QUANTIZATION_RATE, model_linUniformQunat_loss,
+        UI.testResults(QUANTIZATION_RATE, model_linUniformQunat_loss)
+        log.log(QUANTIZATION_RATE, model_linUniformQunat_loss, 'dontshow',
                 algorithm=modelname,
                 runtime=model_linUniformQunat_runtime)
 
@@ -373,7 +374,8 @@ for constPerm in constantPermutationns:
         modelname = 'Linear SOM learning codebook'
         UI.testMessage()
         model_linSOMQuant_loss = test(model_SOM)
-        log.log(QUANTIZATION_RATE, model_linSOMQuant_loss,
+        UI.testResults(QUANTIZATION_RATE, model_linSOMQuant_loss)
+        log.log(QUANTIZATION_RATE, model_linSOMQuant_loss, 'dontshow',
                 algorithm=modelname,
                 runtime=model_linSOMQuant_runtime)
 
