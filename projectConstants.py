@@ -1,5 +1,6 @@
 """ Constants file """
 import math
+import Logger as log
 
 ################################################################################
 ###                       Neural Network constants                           ###
@@ -29,4 +30,3 @@ EPOCH_RANGE = [2, 5, 7]
 LR_RANGE = [0.2, 0.1, 0.05, 0.01]
 STRETCH_RANGE = [2, 5, 10]
 M_RANGE = [2, 3, 4, 5, 6, 7, 8]
-RATE_RANGE = [math.log2(2)*OUTPUT_DIMENSION / INPUT_DIMENSION, math.log2(3)*OUTPUT_DIMENSION / INPUT_DIMENSION, math.log2(4)*OUTPUT_DIMENSION / INPUT_DIMENSION, math.log2(5)*OUTPUT_DIMENSION / INPUT_DIMENSION, math.log2(6)*OUTPUT_DIMENSION / INPUT_DIMENSION, math.log2(7)*OUTPUT_DIMENSION / INPUT_DIMENSION, math.log2(8)*OUTPUT_DIMENSION / INPUT_DIMENSION]
