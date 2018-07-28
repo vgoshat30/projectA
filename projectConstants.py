@@ -1,6 +1,5 @@
 """ Constants file """
 import math
-import Logger as log
 
 ################################################################################
 ###                       Neural Network constants                           ###
@@ -19,7 +18,7 @@ modelsToActivate = [
     # 'Analog sign quantization',
     # 'RNN sign quantization',
     # 'LSTM sign quantization',
-    'Tanh quantization',
+    # 'Tanh quantization',
     'Stretched Tanh quantization'
 ]
 

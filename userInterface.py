@@ -1,10 +1,10 @@
-def trainHeding():
+def trainHeading():
     print('\n\n=========================',
           '\n\tTRAINING\n'
           '=========================\n\n')
 
 
-def testHeding():
+def testHeading():
     print('\n\n=========================',
           '\n\tTESTING\n'
           '=========================\n\n')

@@ -5,16 +5,16 @@ def codebook_uniform(input_variance, M):
     Parameters
     ----------
         input_variance
-            Simple float containing the variance of the input x in R^1 to the scalar
-            quantizers.
+            Simple float containing the variance of the input x in R^1 to the
+            scalar quantizers.
         M
             The number of codewords expected in the output.
 
     Returns
     -------
         codewords
-            codewords of shape `(M,1)`: tensor containing the output codewords of
-            the quantizer. This will be the codebook dictionary.
+            codewords of shape `(M,1)`: tensor containing the output codewords
+            of the quantizer. This will be the codebook dictionary.
     """
     # We first divide the R plane into two regions, where the codewords will
     # lay, we use the symmetricity of this quantizers
@@ -44,7 +44,7 @@ def get_optimal_word(input, codebook):
             qunatized_word: float containing the output word of
             the quantizer.
     """
-    codewordIdx = 0;
+    codewordIdx = 0
     qunatized_word = codebook[0]
     if input > codebook[-1]:
         qunatized_word = codebook[-1]

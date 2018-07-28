@@ -11,7 +11,6 @@ import sympy as sym
 from datetime import datetime
 import matplotlib.pyplot as plt
 from random import random
-import Logger as log
 
 
 def extractModelParameters(tanhModel, codebookSize):
