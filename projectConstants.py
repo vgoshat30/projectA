@@ -30,3 +30,5 @@ EPOCH_RANGE = [2, 5, 7]
 LR_RANGE = [0.2, 0.1, 0.05, 0.01]
 STRETCH_RANGE = [2, 5, 10]
 M_RANGE = [2, 3, 4, 5, 6, 7, 8]
+
+log.log()
